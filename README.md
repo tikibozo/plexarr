@@ -14,10 +14,10 @@ Internet <-> PFSense <-> TrueNAS Scale
 - [PFsense+ (Home/free)](https://www.netgate.com/pfsense-plus-software/software-types) on a [Protectli FW6](https://protectli.com/vault-6-port/)
 - [TrueNAS Scale](https://www.truenas.com/truenas-scale) - [Custom 100TB build](https://www.truenas.com/community/threads/hw-build-review-truenas-scale-plex.109434/#post-755881)
 
-You might be asking "wait, TrueNAS Scale with docker compose?" Yes, [standing on the shoulders of others](https://static.xtremeownage.com/blog/2021/truenas-scale-use-vanilla-docker/#step-1-startup-scripts) I hacked docker back to standard and disabled k3s. This is not supported or a path for beginners, but has yeilded me exactly the system I wanted. Namely one with NAS storage resilience but not flaky community packages and goofy windowed UI.
+You might be asking "wait, TrueNAS Scale with docker compose?" Yes, [standing on the shoulders of others](https://static.xtremeownage.com/blog/2021/truenas-scale-use-vanilla-docker/#step-1-startup-scripts) I hacked docker back to standard and disabled k3s. This is not supported or a path for beginners, but has yeilded me exactly the system I wanted. That is, one with NAS storage resilience but not flaky community packages or goofy windowed UI.
 
 ## Software
-On to the software stack. I've divided the system into multiple compose projects. This is namely for portability, so I could "down" a project on one system, copy the config files to another, and with an "up" have moved the whole stack somewhere else. Now that it's all on the same system, it also allows me to rebuild the media management project without affecting user facing services.
+On to the software stack. I've divided the system into multiple compose projects. This was initially for portability, so I could "down" a project on one system, copy the config files to another, and with an "up" have moved the whole stack somewhere else. Now that it's all on the same system, it also allows me to rebuild the media project without affecting user facing services.
 
 Stack contents:
 -  media: This is the main arr stack, which includes
