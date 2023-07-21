@@ -3,20 +3,21 @@ One bozo's example of how to automate your entertainment.
 
 So this is a sanitized version of what I'm running. My hope is someone getting started finds this and it helps them in some way. Linux filesystems, permissions, docker compose, networking, etc. knowledge is assumed. I did all this with a lot of searching around the internet to cobble everything together - so it's all out there.
 
-In order to adapt this for your use it'll help to know some details about my topology so you can copy them or adjust as appropriate. While I've consolidated everything down to one router and one server (about to move/downsize my living arrangements), this was originally distributed such that storage + plex was on one system, and another system had all the arrs to manage media. Essentially which system you use the various compose projects on is up to you (along with host NFS mounts to connect the volumes.) Similarly, I moved monitoring into Azure with a local proxy, but you could either not use that stuff at all, or run the server on your network as I was initially doing.
+In order to adapt this for your use it'll help to know some details about my topology so you can copy them or adjust as appropriate. While I've consolidated everything down to one router and one server (about to move/downsize my living arrangements), this was originally distributed such that storage + plex was on one system, and another system had all the arrs to manage media. Essentially which system you use the various compose projects on is up to you. Similarly, I moved monitoring into Azure with a local proxy, but you could either not use that stuff at all, or run the server on your network as I was initially doing.
 
+Using Homepage inside Organizer to replace it's summary page is pretty slick it turns out:
 ![Dashboard using Homepage in Organizr](./homepage_organizr.png?raw=true "Dashboard using Homepage in Organizr")
 
 ## Hardware
-From a hardware perspective it's straightforward:
+From a network & hardware perspective it's straightforward:
 Internet <-> PFSense <-> TrueNAS Scale
 - [PFsense+ (Home/free)](https://www.netgate.com/pfsense-plus-software/software-types) on a [Protectli FW6](https://protectli.com/vault-6-port/)
 - [TrueNAS Scale](https://www.truenas.com/truenas-scale) - [Custom 100TB build](https://www.truenas.com/community/threads/hw-build-review-truenas-scale-plex.109434/#post-755881)
 
-You might be asking "wait, TrueNAS Scale with docker compose?" Yes, [standing on the shoulders of others](https://static.xtremeownage.com/blog/2021/truenas-scale-use-vanilla-docker/#step-1-startup-scripts) I hacked docker back to standard and disabled k3s. This is not supported or a path for beginners, but has yeilded me exactly the system I wanted. Namely one with NAS storage resilience but not goofy packages and windowed UI.
+You might be asking "wait, TrueNAS Scale with docker compose?" Yes, [standing on the shoulders of others](https://static.xtremeownage.com/blog/2021/truenas-scale-use-vanilla-docker/#step-1-startup-scripts) I hacked docker back to standard and disabled k3s. This is not supported or a path for beginners, but has yeilded me exactly the system I wanted. Namely one with NAS storage resilience but not flaky community packages and goofy windowed UI.
 
 ## Software
-On to the software stack. I've divided the system into multiple compose projects. This is namely for portability, so I could "down" a project on one system, copy the config files to another, and with an "up" have moved the whole stack somewhere else, and also now that it's all on the same system, it allows me to rebuild the media management project without affecting user facing services.
+On to the software stack. I've divided the system into multiple compose projects. This is namely for portability, so I could "down" a project on one system, copy the config files to another, and with an "up" have moved the whole stack somewhere else. Now that it's all on the same system, it also allows me to rebuild the media management project without affecting user facing services.
 
 Stack contents:
 -  media: This is the main arr stack, which includes
