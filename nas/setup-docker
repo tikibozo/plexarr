@@ -1,0 +1,11 @@
+# Disable k3/enable d-c
+chmod -x /usr/local/bin/k3s
+chmod -x /usr/local/bin/kube-control
+chmod +x /usr/bin/docker-compose
+chmod +x /bin/docker-compose
+systemctl disable k3s
+systemctl stop k3s
+
+# Replace docker config 
+cp /path/to/repo/nas/daemon.json /etc/docker/daemon.json
+systemctl restart docker

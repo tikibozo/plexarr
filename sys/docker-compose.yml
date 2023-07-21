@@ -1,0 +1,52 @@
+---
+version: "3.8"
+services:
+  postfix:
+    container_name: postfix
+    image: loganmarchione/docker-postfixrelay:latest
+    ports:
+      - 25:25/tcp
+    environment:
+      - TZ=Your/Time_Zone
+      - RELAY_HOST=host.domain
+      - RELAY_PORT=587
+      - RELAY_USER=user@domain
+      - RELAY_PASS=pass
+      - MYORIGIN=yourdomain.com
+      - MYNETWORKS=10.0.0.0/24 172.0.0.0/8 192.0.0.0/8 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128
+    volumes:
+      - /path/to/docker/config/postfix/queue:/var/spool/postfix
+      - /path/to/docker/config/postfix/certs/smtp.yourdomain.com.pem:/etc/ssl/certs/smtp.yourdomain.com.pem
+      - /path/to/docker/config/postfix/certs/smtp.yourdomain.com.key:/etc/ssl/private/smtp.yourdomain.com.key
+      - /path/to/docker/config/postfix/config/entrypoint.sh:/entrypoint.sh
+
+  checkrr:
+    container_name: checkrr
+    image: aetaric/checkrr:latest
+    ports:
+      - 8585:8585/tcp
+    volumes:
+      - /path/to/docker/config/checkrr/checkrr.yaml:/etc/checkrr.yaml
+      - /path/to/docker/config/checkrr:/config
+      - /path/to/media:/media
+    restart: unless-stopped
+
+  rclone:
+    image: rclone/rclone
+    container_name: rclone
+    ports:
+      - 5572:5572/tcp
+    volumes:
+      - /path/to/docker/config/rclone:/config/rclone
+      - /path/to/docker/config/rclone:/logs
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      - /dev/fuse:/dev/fuse
+      - /mnt/data:/data
+      - /path/to/docker/config:/opt
+      - /path/to/repo/sys/rclone/rclone-daily.sh:/rclone-daily.sh
+    restart: unless-stopped
+    cap_add:
+      - SYS_ADMIN
+      - SETPCAP
+    command: rcd -v --rc-web-gui --rc-web-gui-no-open-browser --rc-addr :5572 --rc-user rclone --rc-pass rclone --transfers=3 --copy-links

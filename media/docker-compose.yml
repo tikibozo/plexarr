@@ -1,0 +1,406 @@
+---
+version: "3.8"
+services:
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - /path/to/docker/config/gluetun:/gluetun
+    environment:
+      - VPN_SERVICE_PROVIDER=private internet access
+      - SERVER_REGIONS=Some region # see /gluetun/servers.json
+      - SHADOWSOCKS=on
+      - HTTPPROXY=on
+      - OPENVPN_USER=username
+      - OPENVPN_PASSWORD=yourpassword
+      - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24,10.0.0.0/24
+      - HTTP_CONTROL_SERVER_ADDRESS=:8000
+    ports:
+      - 8888:8888/tcp # HTTP
+      - 8388:8388/tcp # Shadowsocks
+      - 8388:8388/udp # Shadowsocks
+      - 9117:9117/tcp # jackett
+      - 8191:8191/tcp # flaresolverr
+      - 9696:9696/tcp # prowlarr
+      - 8000:8000 #control server
+    restart: unless-stopped
+
+  jackett:
+    image: lscr.io/linuxserver/jackett
+    container_name: jackett
+    environment:
+      - PUID=999
+      - PGID=999
+      - TZ=Your/Time_Zone 
+    volumes:
+      - /path/to/docker/config/jackett/config:/config
+      - /path/to/docker/config/jackett/downloads:/downloads
+    network_mode: "service:gluetun"
+    restart: unless-stopped
+    depends_on:
+      - gluetun
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:develop
+    container_name: prowlarr
+    environment:
+      - PUID=999
+      - PGID=999
+      - TZ=Your/Time_Zone
+    volumes:
+      - /path/to/docker/config/prowlarr:/config
+    network_mode: "service:gluetun"
+    restart: unless-stopped
+    depends_on:
+      - gluetun
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:develop
+    container_name: sonarr
+    environment:
+      - PUID=999
+      - PGID=999
+    volumes:
+      - /path/to/docker/config/sonarr/config:/config
+      - /path/to/docker/config/sonarr/custom-cont-init.d:/custom-cont-init.d
+      - /path/to/docker/config/sonarr/custom-services.d:/custom-services.d
+      - /mnt/data:/data
+      - /path/to/downloads:/internal
+    ports:
+      - 8989:8989
+    restart: unless-stopped
+
+  sonarr4k:
+    image: lscr.io/linuxserver/sonarr:develop
+    container_name: sonarr4k
+    environment:
+      - PUID=999
+      - PGID=999
+    volumes:
+      - /path/to/docker/config/sonarr4k/config:/config
+      - /mnt/data:/data
+      - /path/to/downloads:/internal
+    ports:
+      - 9090:9090
+    restart: unless-stopped
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:develop
+    container_name: radarr
+    environment:
+      - PUID=999
+      - PGID=999
+    volumes:
+      - /path/to/docker/config/radarr/config:/config
+      - /path/to/docker/config/radarr/custom-cont-init.d:/custom-cont-init.d
+      - /path/to/docker/config/radarr/custom-services.d:/custom-services.d
+      - /mnt/data:/data
+      - /path/to/downloads:/internal
+    ports:
+      - 7878:7878 
+    restart: unless-stopped
+
+  radarr4k:
+    image: lscr.io/linuxserver/radarr:develop
+    container_name: radarr4k
+    environment:
+      - PUID=999
+      - PGID=999
+    volumes:
+      - /path/to/docker/config/radarr4k/config:/config
+      - /mnt/data:/data
+      - /path/to/downloads:/internal
+    ports:
+      - 7979:7979 
+    restart: unless-stopped
+
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:develop
+    container_name: lidarr
+    environment:
+      - PUID=999
+      - PGID=999
+      - TZ=Your/Time_Zone
+    volumes:
+      - /path/to/docker/config/lidarr/config:/config
+      - /path/to/docker/config/lidarr/custom-services.d:/custom-services.d
+      - /path/to/docker/config/lidarr/custom-cont-init.d:/custom-cont-init.d
+      - /mnt/data:/data
+      - /path/to/downloads:/internal
+      - /path/to/media/music-videos:/music-videos
+      - /path/to/media/music-lidarr-extended:/downloads-lidarr-extended
+    ports:
+      - 8686:8686 
+    restart: unless-stopped
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    environment:
+      - PUID=999
+      - PGID=999
+      - TZ=Your/Time_Zone
+    volumes:
+      - /path/to/docker/config/bazarr/config:/config
+      - /path/to/docker/config/bazarr/subcleaner:/subcleaner
+      - /mnt/data:/data
+    ports:
+      - 6767:6767
+    restart: unless-stopped
+      
+  tautulli:
+    image: tautulli/tautulli:latest
+    container_name: tautulli
+    environment:
+      - PUID=999
+      - PGID=999
+      - TZ=Your/Time_Zone
+    volumes:
+      - /path/to/docker/config/tautulli/data:/config
+    ports:
+      - 8181:8181
+    restart: unless-stopped
+
+  pmm:
+    image: meisnate12/plex-meta-manager:latest
+    container_name: pmm
+    environment:
+      - PMM_CONFIG=/config/config.yml
+      - PMM_TIME=10:00
+    volumes:
+      - /path/to/docker/config/pmm:/config
+      - ./pmm/r:/r
+      - ./pmm/rc:/rc
+      - ./pmm/ov:/ov
+    restart: unless-stopped
+
+  recyclarr:
+    image: ghcr.io/recyclarr/recyclarr:latest
+    container_name: recyclarr
+    environment:
+      - TZ=Your/Time_Zone
+    user: 999:999
+    volumes:
+      - /path/to/docker/config/recyclarr:/config
+        
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    environment:
+      - PUID=999
+      - PGID=999
+      - TZ=Your/Time_Zone
+      - LOG_LEVEL=info
+      - LOG_HTML=false
+      - CAPTCHA_SOLVER=none
+    network_mode: "service:gluetun"
+    restart: unless-stopped
+    depends_on:
+      - gluetun
+
+  gluetun-qbt:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun-qbt
+    environment:
+      - VPN_PORT_FORWARDING=on
+      - VPN_SERVICE_PROVIDER=private internet access
+      - SERVER_REGIONS=Some region # see /gluetun/servers.json
+      - SHADOWSOCKS=on
+      - HTTPPROXY=on
+      - OPENVPN_USER=username
+      - OPENVPN_PASSWORD=yourpassword
+      - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24,10.0.0.0/24
+      - HTTP_CONTROL_SERVER_ADDRESS=:8001
+    volumes:
+      - /path/to/docker/config/gluetun-qbt:/gluetun
+    ports:
+      - 6881:6881 #BT
+      - 6881:6881/udp #qBT
+      - 8081:8081 #qBT
+      - 8001:8001 #control server
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    environment:
+      - PUID=999
+      - PGID=999
+      - TZ=Your/Time_Zone
+      - WEBUI_PORT=8081
+    volumes:
+      - /path/to/docker/config/qbittorrent:/config
+      - /path/to/downloads/qbittorrent:/data
+    network_mode: "service:gluetun-qbt"
+    depends_on:
+      - gluetun-qbt
+    restart: unless-stopped
+
+  gluetun-nzb:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun-nzb
+    environment:
+      - VPN_SERVICE_PROVIDER=private internet access
+      - SERVER_REGIONS=Some region # see /gluetun/servers.json
+      - SHADOWSOCKS=on
+      - HTTPPROXY=on
+      - OPENVPN_USER=username
+      - OPENVPN_PASSWORD=yourpassword
+      - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24,10.0.0.0/24
+      - DNS_ADDRESS=9.9.9.9
+      - HTTP_CONTROL_SERVER_ADDRESS=:8002
+    volumes:
+      - /path/to/docker/config/gluetun-nzb:/gluetun
+    ports:
+      - 8085:8085 #sabnzbd
+      - 8002:8002 #control server
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    container_name: sabnzbd
+    environment:
+      - PUID=999
+      - PGID=999
+      - TZ=Your/Time_Zone
+    volumes:
+      - /path/to/docker/config/sabnzbd:/config
+      - /path/to/downloads/sabnzbd:/downloads
+    network_mode: "service:gluetun-nzb"
+    depends_on:
+      - gluetun-nzb
+    restart: unless-stopped
+
+  gluetun-nzb2:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun-nzb2
+    environment:
+      - VPN_SERVICE_PROVIDER=private internet access
+      - SERVER_REGIONS=CA Montreal
+      - SHADOWSOCKS=on
+      - HTTPPROXY=on
+      - OPENVPN_USER=username
+      - OPENVPN_PASSWORD=yourpassword
+      - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24,10.0.0.0/24
+      - DNS_ADDRESS=9.9.9.9
+      - HTTP_CONTROL_SERVER_ADDRESS=:8003
+    volumes:
+      - /path/to/docker/config/gluetun-nzb2:/gluetun
+    ports:
+      - 8086:8085 #sabnzbd
+      - 8003:8003 #control server
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+
+  sabnzbd2:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    container_name: sabnzbd2
+    environment:
+      - PUID=999
+      - PGID=999
+      - TZ=Your/Time_Zone
+    volumes:
+      - /path/to/docker/config/sabnzbd2:/config
+      - /path/to/downloads/sabnzbd2:/downloads2
+    network_mode: "service:gluetun-nzb2"
+    depends_on:
+      - gluetun-nzb2
+    restart: unless-stopped
+
+  unpackerr:
+    image: golift/unpackerr:latest
+    container_name: unpackerr
+    environment:
+      - UN_DEBUG=false
+      - UN_LOG_FILE=/logs/unpackerr.log
+      - UN_INTERVAL=5m
+      - UN_LOG_QUEUES=20m
+      - UN_SONARR_0_URL=http://yourserver.domain:8989
+      - UN_SONARR_0_API_KEY=yourkey
+      - UN_SONARR_0_PATHS_0=/path/to/downloads/qbittorrent/download/tv,/path/to/downloads/sabnzbd/complete/tv,/path/to/downloads/sabnzbd2/download/tv
+      - UN_SONARR_0_PROTOCOLS=torrent,usenet
+      - UN_SONARR_0_DELETE_ORIG=false
+      - UN_SONARR_1_URL=http://yourserver.domain:9090
+      - UN_SONARR_1_API_KEY=yourkey
+      - UN_SONARR_1_PATHS_0=/path/to/downloads/qbittorrent/download/tv,/path/to/downloads/sabnzbd/complete/tv,/path/to/downloads/sabnzbd2/download/tv
+      - UN_SONARR_1_PROTOCOLS=torrent,usenet
+      - UN_SONARR_1_DELETE_ORIG=false
+      - UN_RADARR_0_URL=http://yourserver.domain:7878
+      - UN_RADARR_0_API_KEY=yourkey
+      - UN_RADARR_0_PATHS_0=/path/to/downloads/qbittorrent/download/movies,/path/to/downloads/sabnzbd/complete/movies,/path/to/downloads/sabnzbd2/download/movies
+      - UN_RADARR_0_PROTOCOLS=torrent,usenet
+      - UN_RADARR_0_DELETE_ORIG=false
+      - UN_RADARR_1_URL=http://yourserver.domain:7979
+      - UN_RADARR_1_API_KEY=yourkey
+      - UN_RADARR_1_PATHS_0=/path/to/downloads/qbittorrent/download/movies4k,/path/to/downloads/sabnzbd/complete/movies4k,/path/to/downloads/sabnzbd2/download/movies4k
+      - UN_RADARR_1_PROTOCOLS=torrent,usenet
+      - UN_RADARR_1_DELETE_ORIG=false
+      - UN_LIDARR_0_URL=http://yourserver.domain:8686
+      - UN_LIDARR_0_API_KEY=yourkey
+      - UN_LIDARR_0_PATHS_0=/path/to/downloads/qbittorrent/download/music,/path/to/downloads/sabnzbd/complete/audio,/path/to/downloads/sabnzbd2/download/audio
+      - UN_LIDARR_0_PROTOCOLS=torrent,usenet
+      - UN_LIDARR_0_DELETE_ORIG=false
+    volumes:
+      - /path/to/downloads:/internal
+      - /path/to/docker/config/unpackerr/logs:/logs
+    restart: unless-stopped
+
+  tdarr:
+    container_name: tdarr
+    image: ghcr.io/haveagitgat/tdarr:latest
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Your/Time_Zone
+      - UMASK_SET=002
+      - serverIP=0.0.0.0
+      - serverPort=8266
+      - webUIPort=8265
+      - internalNode=true
+      - nodeName=yourserver
+    volumes:
+      - /path/to/docker/config/tdarr/server:/app/server
+      - /path/to/docker/config/tdarr/configs:/app/configs
+      - /path/to/docker/config/tdarr/logs:/app/logs
+      - /path/to/transcode/disk/tdarr:/temp
+      - /path/to/media:/media
+    ports:
+      - 8265:8265 # webUI port
+      - 8266:8266 # server port
+      - 8267:8267 # Internal node port
+      - 8268:8268 # Example extra node port
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/dri:/dev/dri
+
+  organizr:
+    container_name: organizr
+    image: organizr/organizr:latest
+    ports:
+      - 9393:80
+    volumes:
+      - /path/to/docker/config/organizr:/config
+    environment:
+      - PUID=999
+      - PGID=999
+      - TZ=Your/Time_Zone
+    restart: unless-stopped
+
+  homepage:
+    image: ghcr.io/benphelps/homepage:main
+    container_name: homepage
+    ports:
+      - 3001:3000
+    volumes:
+      - /path/to/docker/config/homepage:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
+      - /path/to/downloads:/internal:ro
+      - /path/to/media:/data/media:ro

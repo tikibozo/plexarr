@@ -1,0 +1,60 @@
+############################
+#        TEMPLATES         #
+############################
+templates:
+
+  Regular:
+    sort_title: "<<collection_name>>"
+    sync_mode: sync
+    collection_order: release
+    schedule: monthly(10)
+
+  TV Collection:
+    optional:
+      - trakt_list
+      - imdb_list
+      - tvdb_show
+    trakt_list_details: <<trakt_list>>
+    imdb_list: <<imdb_list>>
+    tvdb_show: <<tvdb_show>>
+    sort_title: <<collection_name>>
+    collection_order: release
+
+collections:
+
+#####################################
+#         Studio Collections        #
+#####################################
+# DC Extended Universe:
+#   sort_title: "<<collection_name>>"
+#   imdb_list: https://www.imdb.com/list/ls077827588/
+#   summary: "The DC Extended Universe (DCEU) is a media franchise and shared universe centered on superheros from DC Comics."
+#   collection_order: release.desc
+#   url_poster: https://theposterdb.com/api/assets/113155
+#   schedule: weekly(wednesday)
+
+  Marvel Cinematic Universe:
+    sort_title: "<<collection_name>>"
+    imdb_list: https://www.imdb.com/list/ls009410711/
+    summary: "A collection of movies and shows created by Marvel Studios, comprising of the Marvel Cinematic Universe."
+    collection_order: release.desc
+    url_poster: https://theposterdb.com/api/assets/26227
+    schedule: weekly(wednesday)
+
+############################
+#         REGULAR          #
+############################
+
+  Star Trek:
+    template: {name: Regular}
+    imdb_list: https://www.imdb.com/list/ls564613526
+    url_poster: https://theposterdb.com/api/assets/62233
+    collection_order: release.desc
+
+  Star Wars:
+    template: {name: Regular}
+    tmdb_list:
+      - https://www.themoviedb.org/list/7091278
+      - https://www.themoviedb.org/list/8173369
+    url_poster: https://theposterdb.com/api/assets/39137
+    collection_order: release.desc

@@ -1,0 +1,71 @@
+templates:
+  Resolution:
+    optional:
+      - overlay_level
+    default:
+      overlay: <<overlay_name>>
+      horizontal_offset: 15
+      horizontal_align: left
+      vertical_offset: 15
+      vertical_align: top
+    collection_level: <<overlay_level>>
+    overlay:
+      name: <<overlay_name>>
+      git: PMM/overlays/images/<<overlay_name>>.png
+      group: res
+      weight: <<weight>>
+      horizontal_offset: <<horizontal_offset>>
+      horizontal_align: <<horizontal_align>>
+      vertical_offset: <<vertical_offset>>
+      vertical_align: <<vertical_align>>
+  
+  4K:
+    default:
+      4K: false
+    run_definition: true 
+
+overlays:
+  4K-ep:
+    template:
+      name: 4K
+    overlay:
+      name: 4K
+      horizontal_offset: 15
+      horizontal_align: left
+      vertical_offset: 15
+      vertical_align: top
+      overlay_level: episode
+    plex_search:
+      type: episode
+      all:
+        resolution.regex: '(?i)2160|4K'
+
+  4K-season:
+    template:
+      name: 4K
+    overlay:
+      name: 4K
+      horizontal_offset: 15
+      horizontal_align: left
+      vertical_offset: 15
+      vertical_align: top
+      overlay_level: season
+    plex_search:
+      type: season
+      all:
+        resolution.regex: '(?i)2160|4K'
+
+  4K-show:
+    template:
+      name: 4K
+    overlay:
+      name: 4K
+      horizontal_offset: 15
+      horizontal_align: left
+      vertical_offset: 15
+      vertical_align: top
+      overlay_level: show
+    plex_search:
+      type: show
+      all:
+        resolution.regex: '(?i)2160|4K'

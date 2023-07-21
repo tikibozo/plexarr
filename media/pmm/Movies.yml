@@ -1,0 +1,212 @@
+###########################
+#        Templates        #
+###########################
+templates:
+    Genre:
+        plex_search:
+          genre: <<genre>>
+        url_poster: <<poster>>
+        sort_title: +++++++_<<collection_name>>
+        collection_order: alpha
+    Holiday:
+        url_poster: <<poster>>
+        sort_title: +++++++_<<collection_name>>
+        collection_order: release
+    Studio:
+        plex_search:
+          studio: <<studio>>
+        url_poster: <<poster>>
+        sort_title: +++++_<<collection_name>>
+        collection_order: alpha
+    Movie:
+        tmdb_collection: <<collection>>
+        tmdb_summary: <<summary>>
+        url_poster: <<poster>>
+        collection_order: release 
+        sort_title: <<sort>> 
+    Decade:
+        plex_search:
+          decade: <<year>>
+        url_poster: <<poster>>
+        sort_title: +++_<<collection_name>>
+        collection_order: alpha
+    People:
+        actor: tmdb
+        tmdb_person: <<person>>
+        sort_title: ++_<<collection_name>>
+        collection_order: release
+    PPeople:
+        plex_search:
+          all:
+            actor: <<person>>
+        sort_title: ++_<<collection_name>>
+        collection_order: release
+
+    IPeople:
+        imdb_list: <<list>>
+        collection_order: release
+
+###########################
+#       Collections       #
+###########################
+collections:
+
+  Marvel Cinematic Universe:
+    imdb_list: https://www.imdb.com/list/ls000024621/
+    summary: A collection of all MCU movies.
+    sort_title: 'Marvel Cinematic Universe'
+    collection_order: release.desc
+    collection_mode: default
+    sync_mode: sync
+    url_poster: https://theposterdb.com/api/assets/26227
+    schedule: weekly(thursday) 
+
+  DC Extended Universe:
+    imdb_list: https://www.imdb.com/list/ls027494248
+    summary: A collection of all the DC universe movies.
+    sort_title: 'DC Cinematic Universe'
+    collection_order: release.desc
+    collection_mode: default
+    sync_mode: sync
+    url_poster: https://theposterdb.com/api/assets/113155
+    schedule: weekly(thursday) 
+
+  Criterion Collection:
+    imdb_list: https://www.imdb.com/search/title/?lists=ls090936109
+    sort_title: 'Criterion'
+    sync_mode: sync
+    url_poster: https://theposterdb.com/api/assets/206770
+    collection_order: alpha 
+    schedule: monthly(1) 
+
+      #  Trending:
+      # trakt_trending: 30
+      # sort_title: 'Trending'
+      #sync_mode: sync
+      #collection_mode: default
+      #collection_order: custom
+      # schedule: daily
+      #url_poster: https://theposterdb.com/api/assets/241649
+
+  Cirque du Soleil:
+    imdb_list: https://www.imdb.com/list/ls031689972/
+      #mdblist_list: https://mdblist.com/lists/awesomeaustn/cirque-du-soleil
+    sort_title: 'Cirque du Soleil'
+    sync_mode: sync
+    collection_mode: default
+    collection_order: release
+    schedule: weekly(thursday) 
+    url_poster: https://theposterdb.com/api/assets/73046
+  
+  Godzilla!:
+    imdb_list: https://www.imdb.com/list/ls002185173/
+    sort_title: 'Godzilla'
+    summary: "A collection of the monster movies produced by the Toho Company.
+      
+Toho Company, Limited (東宝株式会社 Tōhō Kabushiki Gaisha), officially stylized TOHO, is a major Japanese film studio. It is headquartered in Chiyoda, Tokyo, and is one of the core companies of the Hankyu Hanshin Toho Group. In the West, it is best known as the producer of many kaiju and tokusatsu movies, the films of Akira Kurosawa, and the anime films of Studio Ghibli, as well as the Pokémon movies.
+
+The company's most famous creation, Godzilla, was co-created by producer Tomoyuki Tanaka."
+
+    sync_mode: sync
+    collection_mode: default
+    collection_order: release.desc
+    schedule: monthly(4)
+    url_poster: https://theposterdb.com/api/assets/16674
+
+  Star Trek:
+    imdb_list: https://www.imdb.com/list/ls084767125
+    sort_title: 'Star Trek'
+    sync_mode: append                                                   # Append for Star Trek: Legacy
+    collection_mode: default
+    collection_order: release
+    schedule: weekly(thursday) 
+    url_poster: https://theposterdb.com/api/assets/62233
+
+  Star Wars:
+    imdb_list: https://www.imdb.com/list/ls084761910
+    sort_title: 'Star Wars'
+    sync_mode: append                                                   # Append for Star Wars: The Mandalorian Parts I and II
+    collection_mode: default
+    collection_order: release
+    schedule: weekly(thursday) 
+    url_poster: https://theposterdb.com/api/assets/39137
+
+  Studio Ghibli:
+    template: {name: Studio, studio: "Studio Ghibli", poster: https://theposterdb.com/api/assets/32223}
+    sort_title: 'Studio Ghibli'
+    summary: Studio Ghibli Inc. is a Japanese animation film studio headquartered in Koganei, Tokyo. The studio is best known for its animated feature films, and has also produced several short films, television commercials, and one television film. The studio’s mascot and most recognizable symbol is the character, Totoro, a giant cat-like spirit from the 1988 classic, My Neighbor Totoro.
+    sync_mode: append 
+    collection_mode: default
+    collection_order: release.desc
+    schedule: weekly(thursday) 
+    url_poster: https://theposterdb.com/api/assets/48141
+    imdb_list: 
+      - https://www.imdb.com/list/ls076439519/
+      - https://www.imdb.com/list/ls068907948/ 
+
+  James Bond:
+    template: {name: Movie, collection: 645, summary: 645, poster: https://theposterdb.com/api/assets/115662, sort: "James Bond"}
+  X-Men:
+    template: {name: Movie, collection: 748, summary: 748, poster: https://theposterdb.com/api/assets/20, sort: "X-Men" }
+  Mission Impossible:
+    template: {name: Movie, collection: 87359, summary: 87359, poster: https://theposterdb.com/api/assets/65202, sort: "Mission Impossible"}
+  Pirates of the Caribbean:
+    template: {name: Movie, collection: 295, summary: 295, poster: https://theposterdb.com/api/assets/71934, sort: "Pirates of the Caribbean"}
+  Jurassic Park:
+    template: {name: Movie, collection: 328, summary: 328, poster: https://theposterdb.com/api/assets/45080, sort: "Jurassic Park"}
+  Harry Potter:
+    template: {name: Movie, collection: 1241, summary: 1241, poster: https://theposterdb.com/api/assets/737, sort: "Harry Potter"}
+  Bourne:
+    template: {name: Movie, collection: 31562, summary: 31562, poster: https://theposterdb.com/api/assets/164761, sort: "Bourne Identity Series"}
+  Indiana Jones:
+    template: {name: Movie, collection: 84, summary: 84, poster: https://theposterdb.com/api/assets/53369, sort: "Indiana Jones"}
+  
+  Mads Mikkelsen:
+    sync_mode: append 
+    sort_title: 'Mads Mikkelsen'
+    collection_mode: default
+    collection_order: release.desc
+    schedule: weekly(thursday) 
+      #url_poster:  
+    imdb_list: 
+      - https://www.imdb.com/list/ls536975347/ 
+      - https://www.imdb.com/list/ls029108885/
+      - https://www.imdb.com/list/ls555333805/ 
+    summary: "Mads Dittmann Mikkelsen, is a Danish actor. Originally a gymnast and dancer, he rose to fame in Denmark as an actor for his roles such as Tonny in the first two films of the Pusher film trilogy (1996, 2004), Detective Sergeant Allan Fischer in the television series Rejseholdet (2000–2004), Niels in Open Hearts (2002), Svend in The Green Butchers (2003), Ivan in Adam's Apples (2005) and Jacob Petersen in After the Wedding (2006).
+
+Mikkelsen achieved worldwide recognition for playing the main antagonist Le Chiffre in the twenty-first James Bond film, Casino Royale (2006). His other roles include Igor Stravinsky in Coco Chanel & Igor Stravinsky (2008), Johann Friedrich Struensee in A Royal Affair (2012), his Cannes Film Festival Best Actor Award-winning performance as Lucas in the Danish film The Hunt (2012), Dr. Hannibal Lecter in the television series Hannibal (2013–2015), Kaecilius in Marvel's Doctor Strange (2016), Galen Erso in Lucasfilm's Rogue One (2016), Cliff Unger in Hideo Kojima's video game Death Stranding (2019), his BAFTA-nominated role as Martin in Another Round (2020) and Gellert Grindelwald in Fantastic Beasts: The Secrets of Dumbledore (2022).
+
+A. O. Scott of The New York Times remarked that in the Hollywood scene, Mikkelsen has \"become a reliable character actor with an intriguing mug\" but stated that on the domestic front \"he is something else: a star, an axiom, a face of the resurgent Danish cinema\"."
+
+  Guillermo del Toro:
+    sync_mode: append 
+    sort_title: 'Guillermo del Toro'
+    summary: "Guillermo del Toro Gómez is a Mexican filmmaker and author. A recipient of three Academy Awards, three BAFTA Awards, and an Emmy Award, his work has been characterized by a strong connection to fairy tales and horror, with an effort to infuse visual or poetic beauty in the grotesque. He has had a lifelong fascination with monsters, which he considers symbols of great power. He is also known for his use of insectile and religious imagery, his themes of Catholicism, anti-fascism, and celebrating imperfection, underworld motifs, practical special effects, dominant amber lighting, and his frequent collaborations with actors Ron Perlman and Doug Jones.
+
+Throughout his career, del Toro has shifted between Spanish-language films—such as Cronos (1993), The Devil's Backbone (2001), and Pan's Labyrinth (2006)—and English-language films, including Mimic (1997), Blade II (2002), Hellboy (2004) and its sequel Hellboy II: The Golden Army (2008), Pacific Rim (2013), Crimson Peak (2015), The Shape of Water (2017), Nightmare Alley (2021), and Pinocchio (2022).
+
+As a producer or writer, he worked on the films The Orphanage (2007), Don't Be Afraid of the Dark (2010), The Hobbit film series (2012–2014), Mama (2013), The Book of Life (2014), Pacific Rim: Uprising (2018), Scary Stories to Tell in the Dark (2019), and The Witches (2020). In 2022, he created the Netflix anthology horror series Guillermo del Toro's Cabinet of Curiosities, featuring a collection of classical horror stories.
+
+With Chuck Hogan, he co-authored The Strain trilogy of novels (2009–2011), later adapted into a comic-book series (2011–15) and a live-action television series (2014–17). With DreamWorks Animation and Netflix, he created the animated franchise Tales of Arcadia, which includes the series Trollhunters (2016–18), 3Below (2018–19), and Wizards (2020), and the sequel film Trollhunters: Rise of the Titans (2021). Also with DreamWorks, he executive produced Puss in Boots (2011), Kung Fu Panda 2 (2011), Rise of the Guardians (2012), and Kung Fu Panda 3 (2016).
+
+Del Toro is close friends with fellow Mexican filmmakers Alfonso Cuarón and Alejandro G. Iñárritu, and they are collectively known as \"The Three Amigos of Cinema.\" He was included in Time magazine's list of the 100 most influential people in the world in 2018, and he received a motion picture star on the Hollywood Walk of Fame in 2019."
+    collection_mode: default
+    collection_order: release.desc
+    schedule: weekly(thursday) 
+      #url_poster:  
+    imdb_list: 
+      - https://www.imdb.com/list/ls046933910/
+      - https://www.imdb.com/list/ls069076995/
+      - https://www.imdb.com/list/ls022112190/
+      - https://www.imdb.com/list/ls069461094/
+
+  Oscar Nominees:
+    sync_mode: append
+    sort_title: 'aaaaa'
+    summary: 2023 Best Picture, Director, Actor/Actress, Supporting Actor/Actress Nominees (As available)
+    collection_mode: default
+    collection_order: alpha
+    schedule: weekly(wednesday)
+    url_poster: https://i.imgur.com/0Kao9gY.jpeg
+    imdb_list:
+      - https://www.imdb.com/list/ls562954296/

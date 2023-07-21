@@ -1,0 +1,105 @@
+---
+version: "3.8"
+services:
+  plex:
+    container_name: plex
+    image: plexinc/pms-docker:latest
+    environment:
+      - PLEX_UID=999
+      - PLEX_GID=999
+      - TZ=Your/Time_zone
+      - PLEX_CLAIM=claim-aaaaaaaaa
+      - ADVERTISE_IP=http://plex.yourdomain.com/
+    ports:
+      - 32400:32400/tcp #main plex app
+      - 8324:8324/tcp   #plex roku/plex companion control
+      - 32469:32469/tcp #plex dlna
+      - 32410:32410/udp # gdm network discovery
+      - 32412:32412/udp # gdm network discovery
+      - 32413:32413/udp # gdm network discovery
+      - 32414:32414/udp # gdm network discovery
+    volumes:
+      - /path/to/docker/config/plex/config:/config
+      - /path/to/transcode/disk/temp:/transcode
+      - /path/to/media:/data/media
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/dri:/dev/dri
+        
+  overseerr:
+    image: lscr.io/linuxserver/overseerr:latest
+    container_name: overseerr
+    environment:
+      - PUID=999
+      - PGID=999
+      - TZ=Your/Time_Zone
+    volumes:
+     - /path/to/docker/config/overseerr:/config
+    ports:
+     - 5055:5055
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.overseerr.rule=Host(`overseerr.yourdomain.com`)"
+      - "traefik.http.routers.overseerr.entrypoints=websecure"
+      - "traefik.http.routers.overseerr.tls.certresolver=myresolver"
+
+  requestrr:
+    container_name: requestrr
+    image: darkalfx/requestrr
+    ports:
+      - 4545:4545
+    volumes:
+      - /path/to/docker/config/requestrr:/root/config
+    restart: unless-stopped
+
+  wizarr:
+    container_name: wizarr
+    image: ghcr.io/wizarrrr/wizarr
+    environment:
+      - TZ=Your/Time_Zone
+      - APP_URL=https://join.yourdomain.com
+      - DISABLE_INBUILT_AUTH=false #Set to true ONLY if you are using another auth provider (Authelia, Authentik, etc)
+      - ALLOW_BUG_REPORTING=true #Helps me fix bugs, but you can disable it if you want! I use Sentry.io for this.
+    volumes:
+      - /path/to/docker/config/wizarr:/data/database
+    ports:
+      - 5690:5690
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wizarr.rule=Host(`join.yourdomain.com`)"
+      - "traefik.http.routers.wizarr.entrypoints=websecure"
+      - "traefik.http.routers.wizarr.tls.certresolver=myresolver"
+      
+  traefik:
+    image: traefik:v2.9
+    container_name: "traefik"
+    environment:
+      - NAMECHEAP_API_USER=user
+      - NAMECHEAP_API_KEY=apikey
+      - NAMECHEAP_TTL=1
+    restart: unless-stopped
+    command:
+     #- "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.dnschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.dnschallenge.provider=namecheap"
+      - "--certificatesresolvers.myresolver.acme.caserver=https://acme-v02.api.letsencrypt.org/directory"
+        #- "--certificatesresolvers.myresolver.acme.httpchallenge=true"
+        #- "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=websecure"
+      - "--certificatesresolvers.myresolver.acme.email=you@youremail.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8282:8080"
+    volumes:
+      - "/path/to/repo/media/letsencrypt:/letsencrypt"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"

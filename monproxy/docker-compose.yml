@@ -1,0 +1,90 @@
+version: '3.8'
+services:
+  zabbix-proxy:
+    container_name: zabbix-proxy
+    image: zabbix/zabbix-proxy-mysql:alpine-latest
+    restart: unless-stopped
+    ports:
+      - "10052:10051"
+    environment:
+      - ZBX_PROXYMODE=0
+      - ZBX_HOSTNAME=yourserver-proxy
+      - ZBX_SERVER_HOST=10.5.5.5:10051
+      - ZBX_STATSALLOWEDIP=10.5.5.5,127.0.0.1
+      - DB_SERVER_HOST=mysql-server
+      - DB_SERVER_PORT=3306
+      - MYSQL_USER_FILE=/run/secrets/MYSQL_USER
+      - MYSQL_PASSWORD_FILE=/run/secrets/MYSQL_PASSWORD
+      - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/MYSQL_ROOT_PASSWORD
+      - MYSQL_DATABASE=zabbix
+    secrets:
+      - MYSQL_USER
+      - MYSQL_PASSWORD
+      - MYSQL_ROOT_USER
+      - MYSQL_ROOT_PASSWORD
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro 
+
+  mysql-server:
+    container_name: mysql-server
+    image: mysql:8.0
+    restart: unless-stopped
+    cap_add:
+      - SYS_NICE  # CAP_SYS_NICE
+    ports:
+      - 3306:3306
+    command:
+      - mysqld
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_bin
+      - --skip-character-set-client-handshake
+      - --default-authentication-plugin=mysql_native_password
+      - --disable-log-bin
+    volumes:
+      - /mnt/app/db/zabbixproxy/var/lib/mysql:/var/lib/mysql:rw
+    env_file:
+      - ./env_vars/.env_db_mysql
+    secrets:
+      - MYSQL_USER
+      - MYSQL_PASSWORD
+      - MYSQL_ROOT_USER
+      - MYSQL_ROOT_PASSWORD
+
+  db_data_mysql:
+    container_name: db_data_mysql
+    image: busybox
+    volumes:
+      - /internal/opt/zabbixproxy/var/lib/mysql:/var/lib/mysql:rw
+
+
+  zabbix:
+    container_name: zabbix-agent2
+    image: zabbix/zabbix-agent2:ubuntu-6.2-latest
+    environment:
+      - ZBX_HOSTNAME=yourserver
+      - ZBX_SERVER_HOST=172.27.0.1
+      - ZBX_SERVER_PORT=10052
+      - ZBX_DEBUGLEVEL=3
+      - ZBX_ENABLEPERSISTENTBUFFER=true
+    ports:
+      - 10050:10050/tcp
+      - 10051:10051/tcp
+      - 31999:31999/tcp
+    volumes:
+      - /mnt/app/db/zabbix:/var/lib/zabbix/buffer
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+    privileged: true
+    group_add:
+      - "999" #add zabbix user to docker group within container
+
+secrets:
+  MYSQL_USER:
+    file: ./env_vars/.MYSQL_USER
+  MYSQL_PASSWORD:
+    file: ./env_vars/.MYSQL_PASSWORD
+  MYSQL_ROOT_USER:
+    file: ./env_vars/.MYSQL_ROOT_USER
+  MYSQL_ROOT_PASSWORD:
+    file: ./env_vars/.MYSQL_ROOT_PASSWORD

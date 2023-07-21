@@ -1,0 +1,1 @@
+/bin/unrar x -ierr -r -y  *.rar .

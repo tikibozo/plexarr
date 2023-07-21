@@ -1,0 +1,23 @@
+---
+# For configuration options and examples, please see:
+# https://gethomepage.dev/en/configs/settings
+
+#providers:
+#  openweathermap: openweathermapapikey
+#  weatherapi: weatherapiapikey
+
+layout:
+    Plex:
+        style: column 
+    Media Management:
+        style: column 
+    Requests & Downloads:
+        style: column 
+    VPNs:
+        style: column
+
+headerStyle: clean
+theme: dark
+color: stone
+showstats: true
+hideVersion: true

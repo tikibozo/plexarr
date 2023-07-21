@@ -1,0 +1,232 @@
+---
+# For configuration options and examples, please see:
+# https://gethomepage.dev/en/configs/services
+
+- Plex:
+    - Plex:
+        icon: plex.png
+        href: https://plex.yourdomain.com
+        server: yourserver-docker
+        container: plex
+        widget:
+            type: plex
+            url: https://plex.yourdomain.com
+            key: plexkey 
+
+    - Tautulli:
+        icon: tautulli.png
+        href: http://yourserver.mylocal:8181
+        server: yourserver-docker
+        container: tautulli
+        widget:
+            type: tautulli
+            url: http://yourserver.mylocal:8181
+            key: tautullikey 
+
+    - TrueNAS:
+        icon: truenas.png
+        href: http://yourserver.mylocal
+        widget:
+            type: truenas
+            url: http://yourserver.mylocal:81
+            key: apikey 
+            fields: ["load", "uptime", "alerts"]
+
+- Requests & Downloads:
+    - Overseerr:
+        icon: overseerr.png
+        href: https://overseerr.yourdomain.com
+        server: yourserver-docker
+        container: overseerr
+        widget:
+            type: overseerr
+            url: https://overseerr.yourdomain.com
+            key: overseerrkey 
+#           fields: ["pending", "approved", "available", "processing"]
+            fields: ["approved", "processing"]
+
+    - sabnzbd 1:
+        icon: sabnzbd 
+        href: http://yourserver.mylocal:8085/sabnzbd
+        server: yourserver-docker
+        container: sabnzbd
+        widget:
+            type: sabnzbd
+            url: http://yourserver.mylocal:8085/sabnzbd
+            key: sabkey 
+            fields: ["rate", "queue", "timeleft"]
+
+    - sabnzbd 2:
+        icon: sabnzbd 
+        href: http://yourserver.mylocal:8086/sabnzbd
+        server: yourserver-docker
+        container: sabnzbd2
+        widget:
+            type: sabnzbd
+            url: http://yourserver.mylocal:8086/sabnzbd
+            key: sabkey 
+            fields: ["rate", "queue", "timeleft"]
+
+    - qBittorrent:
+        icon: qbittorrent 
+        href: http://yourserver.mylocal:8081
+        server: yourserver-docker
+        container: qbittorrent 
+        widget:
+            type: qbittorrent
+            url: http://yourserver.mylocal:8081
+            user: user 
+            password: password
+            fields: ["leech", "download", "seed", "upload"]
+
+    - Tdarr:
+        icon: tdarr.png
+        href: http://yourserver.mylocal:8265
+        server: yourserver-docker
+        container: tdarr 
+        widget:
+            type: tdarr 
+            url: http://yourserver.mylocal:8265
+#           fields: ["queue", "processed", "errored", "saved"]
+            fields: ["queue", "errored"]
+
+#  - Prowlarr:
+#      icon: prowlarr 
+#      href: http://yourserver.mylocal:9696
+#      server: yourserver-docker
+#      container: prowlarr 
+#      widget:
+#        type: prowlarr 
+#        url: http://yourserver.mylocal:9696
+#        key: prowlarrkey 
+#        fields: ["numberOfGrabs", "numberOfQueries" ]
+
+#  - Jackett:
+#      icon: jackett 
+#      href: http://yourserver.mylocal:9117
+#      server: yourserver-docker
+#      container: jackett 
+#      widget:
+#        type: jackett 
+#        url: http://yourserver.mylocal:9117
+#        fields: ["configured", "errored"]
+
+- Media Management:
+    - Radarr:
+        icon: radarr.png
+        href: http://yourserver.mylocal:7878
+        server: yourserver-docker
+        container: radarr
+        widget:
+            type: radarr
+            url: http://yourserver.mylocal:7878
+            key: radarrkey 
+#           fields: ["wanted", "missing", "queued", "movies"]
+            fields: ["queued"]
+
+    - Radarr (4k):
+        icon: radarr.png
+        href: http://yourserver.mylocal:7979
+        server: yourserver-docker
+        container: radarr4k
+        widget:
+            type: radarr
+            url: http://yourserver.mylocal:7979
+            key: radarrkey 
+#           fields: ["wanted", "missing", "queued", "movies"]
+            fields: ["queued"]
+
+    - Sonarr:
+        icon: sonarr.png
+        href: http://yourserver.mylocal:8989
+        server: yourserver-docker
+        container: sonarr
+        widget:
+            type: sonarr
+            url: http://yourserver.mylocal:8989
+            key: sonarrkey 
+#           fields: ["wanted", "queued", "series"]
+            fields: ["queued"]
+
+    - Sonarr (4k):
+        icon: sonarr.png
+        href: http://yourserver.mylocal:9090
+        server: yourserver-docker
+        container: sonarr4k
+        widget:
+            type: sonarr
+            url: http://yourserver.mylocal:9090
+            key: sonarrkey 
+#           fields: ["wanted", "queued", "series"]
+            fields: ["queued"]
+
+    - Lidarr:
+        icon: lidarr.png
+        href: http://yourserver.mylocal:8686
+        server: yourserver-docker
+        container: lidarr
+        widget:
+            type: lidarr
+            url: http://yourserver.mylocal:8686
+            key: lidarrkey 
+#           fields: ["wanted", "missing", "queued", "albums"]
+            fields: ["queued"]
+
+    - Bazarr:
+        icon: bazarr.png
+        href: http://yourserver.mylocal:6767
+        server: yourserver-docker
+        container: bazarr
+        widget:
+            type: bazarr
+            url: http://yourserver.mylocal:6767
+            key: bazarrkey 
+            fields: ["missingEpisodes", "missingMovies"]
+
+- Networking:
+    - gluetun:
+        icon: gluetun
+        server: yourserver-docker
+        container: gluetun
+        widget:
+            type: gluetun
+            url: http://yourserver.mylocal:8000
+            fields: ["public_ip", "region", "country"]
+
+    - gluetun (nzb1):
+        icon: gluetun
+        server: yourserver-docker
+        container: gluetun-nzb
+        widget:
+            type: gluetun
+            url: http://yourserver.mylocal:8002
+            fields: ["public_ip", "region", "country"]
+
+    - gluetun (nzb2):
+        icon: gluetun
+        href: http://yourserver.mylocal:8086/sabnzbd
+        server: yourserver-docker
+        container: gluetun-nzb2
+        widget:
+            type: gluetun
+            url: http://yourserver.mylocal:8003
+            fields: ["public_ip", "region", "country"]
+
+    - gluetun (qbt):
+        icon: gluetun
+        server: yourserver-docker
+        container: gluetun-qbt
+        widget:
+            type: gluetun
+            url: http://yourserver.mylocal:8001
+            fields: ["public_ip", "region", "country"]
+
+    - Traefik:
+        icon: traefik.png
+        href: http://yourserver.mylocal:8282
+        server: yourserver-docker
+        container: traefik
+        widget:
+            type: traefik
+            url: http://yourserver.mylocal:8282
+            fields: ["routers", "services", "middleware"]

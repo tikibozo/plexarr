@@ -1,0 +1,11 @@
+{
+    "data-root": "/mnt/app/docker",
+    "dns": [
+        "10.0.0.1"
+    ],
+    "exec-opts": [
+        "native.cgroupdriver=cgroupfs"
+    ],
+    "iptables": true,
+    "storage-driver": "overlay2"
+}
