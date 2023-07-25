@@ -53,9 +53,9 @@ Here's how I've mapped storage hardware to functional usage:
 - SSD (Mirrored)
     - /mnt/app/db - Docker config volumes, databases
     - /mnt/app/download - Temporary download directories by client
-    - /mnt/docker - Docker service (images, etc.)
-    - /mnt/home - Home dir with private version of this repo
-    - /mnt/vm - VM image storage for Ubuntu VM w/ PIA client
+    - /mnt/app/docker - Docker service (images, etc.)
+    - /mnt/app/home - Home dir with private version of this repo
+    - /mnt/app/vm - VM image storage for Ubuntu VM w/ PIA client
 - NVME
     - /mnt/transcode/plex - Plex transcoding temp storage
     - /mnt/transcode/tdarr - Tdarr transcoding temp storage
