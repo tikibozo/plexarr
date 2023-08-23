@@ -79,6 +79,18 @@
             password: password
             fields: ["leech", "download", "seed", "upload"]
 
+    - Autobrr:
+        icon: autobrr.png
+        href: http://yourserver.mylocal:7474
+        server: yourserver-docker
+        container: autobrr
+        widget:
+            type: autobrr
+            url: http://yourserver.mylocal:7474
+            key: 000apikey000 
+#           fields: ["approvedPushes", "rejectedPushes", "filters", "indexers"]
+            fields: ["approvedPushes", "rejectedPushes"]
+
     - Tdarr:
         icon: tdarr.png
         href: http://yourserver.mylocal:8265
