@@ -1,1 +1,1 @@
-python3 plex_meta_manager.py -is --run-collections $@ 
+python3 plex_meta_manager.py -is --run-collections "$@" 
