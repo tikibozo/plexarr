@@ -1,2 +1,28 @@
-#!/bin/sh
-/bin/unrar x -ierr -r -y *.rar .
+#!/bin/bash
+
+# Check and repair .par2 files, excluding vol files
+if compgen -G "*.par2" > /dev/null > /dev/null; then
+    find . -type f -name '*.par2' -exec par2 r {} \;
+fi
+
+# Unrar .part01.rar files
+if compgen -G "*.part01.rar" > /dev/null; then
+    /bin/unrar x -ierr -r -y *.part01.rar .
+fi
+
+# Unrar .part001.rar files
+if compgen -G "*.part001.rar" > /dev/null; then
+    /bin/unrar x -ierr -r -y *.part001.rar .
+fi
+
+# Unrar .r00 files
+if compgen -G "*.r00" > /dev/null; then
+    /bin/unrar x -ierr -r -y *.r00 .
+fi
+
+# extract 7zip
+if compgen -G "*.7z" > /dev/null; then
+    /usr/bin/7z x *.7z .
+fi
+
+chown -R docker:docker * 

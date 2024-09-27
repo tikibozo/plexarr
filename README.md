@@ -36,7 +36,7 @@ Stack contents:
 - nas: User facing services
     - [Plex](https://plex.tv) - Media server
     - [Overseerr](https://overseerr.dev/) - Web requests/notifications
-    - [Requestrr](https://github.com/darkalfx/requestrr) - Discord requests
+    - [Requestrr](https://github.com/thomst08/requestrr) - Discord requests
     - [Wizarr](https://github.com/Wizarrrr/wizarr) - New user signup
     - [Traefik](https://github.com/traefik/traefik)  - Reverse proxy
 - sys: System services

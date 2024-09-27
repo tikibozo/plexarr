@@ -1,11 +1,123 @@
-# Disable k3/enable d-c
-chmod -x /usr/local/bin/k3s
-chmod -x /usr/local/bin/kube-control
-chmod +x /usr/bin/docker-compose
-chmod +x /bin/docker-compose
-systemctl disable k3s
-systemctl stop k3s
+#!/bin/bash
+# Enable TrueNAS Scale developer mode (dragonfish)
+/usr/local/libexec/disable-rootfs-protection
 
-# Replace docker config 
-cp /path/to/repo/nas/daemon.json /etc/docker/daemon.json
-systemctl restart docker
+# Disable k3
+disable_k3() {
+    echo "Disabling execution of k3 commands"
+    chmod -x /usr/local/bin/k3s
+    chmod -x /usr/local/bin/k3s-kill.sh
+    chmod -x /usr/local/bin/kube-router
+    
+    echo "Disable and stop k3 service"
+    systemctl disable k3s
+    systemctl stop k3s
+}
+
+# Misc Pre-docker setup tasks
+config_sys() {
+    # Move netdata uid, conflicts with docker uid 999
+    echo "Move netdata to different uid" 
+    [ "$(id -u netdata 2>/dev/null)" -eq 999 ] && sudo usermod -u 9999 netdata
+
+   # Bump up max watches (streams can fail when exhausted)
+   if ! grep -q "^fs.inotify.max_user_watches = 499401" /etc/sysctl.conf; then
+    echo "fs.inotify.max_user_watches = 499401" | sudo tee -a /etc/sysctl.conf > /dev/null
+    sysctl -p
+   fi
+
+}
+
+# Install docker. Steps from https://docs.docker.com/engine/install/debian/
+install_docker() {
+    echo "Re-enable apt/dpkg"
+    chmod +x /usr/bin/apt*
+    chmod +x /usr/bin/dpkg
+
+    # Add Docker's official GPG key:
+    echo "Add Docker GPG key"
+    apt-get update
+    apt-get install -y ca-certificates curl gnupg
+    install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --batch --yes --dearmor -o /etc/apt/keyrings/docker.gpg
+    chmod a+r /etc/apt/keyrings/docker.gpg
+
+    # Add the repository to Apt sources:
+    echo "Add Docker repo to sources"
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+      $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+      tee /etc/apt/sources.list.d/docker.list > /dev/null
+    apt-get update
+
+    echo "Install packages"
+    apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+}
+
+# Set docker config 
+config_docker() {
+    echo "Copy daemon config"
+    cp /mnt/app/home/jon/compose/nas/daemon.json /etc/docker/daemon.json
+    touch /etc/docker.env
+    echo "Enable and start docker daemon"
+    systemctl enable docker
+    systemctl start docker
+    systemctl status docker.service
+}
+
+# "Up" the relevant compose projects to restore/start containers
+compose_up() {
+    /mnt/app/home/jon/compose/scripts/up
+    sleep 2
+    /mnt/app/home/jon/compose/scripts/up
+    sleep 2
+    /mnt/app/home/jon/compose/scripts/up
+}
+
+# Other non-standard system configuration needs 
+config_other() {
+    # Install full vim, archive utils
+    update-alternatives --remove-all vim.tiny
+    apt-get install -y vim par2 unrar p7zip-full
+    update-alternatives --install /usr/bin/vim vim /usr/bin/vim.basic 0
+    dpkg --configure -a
+    
+    # Setup zabbix user/group and rights
+    adduser --system --uid 1997 zabbix
+    addgroup --system --gid 1995 zabbix
+    usermod --gid 1995 zabbix
+    zbxsudo="zabbix ALL=(ALL) NOPASSWD: /usr/local/sbin/smartctl"
+    if ! grep -qF -- "$zbxsudo" /etc/sudoers; then
+      echo "$zbxsudo" | sudo tee -a /etc/sudoers > /dev/null
+    fi
+    ln -s /sbin/smartctl /usr/local/bin/smartctl
+}
+
+# Parameters: setup-docker [ -d | -i | -c | -s | -o | -a]
+# d: disable k3
+# m: misc pre-docker config tasks
+# i: install docker
+# c: configure docker
+# s: start containers
+# o: other post-docker config tasks
+# a: all of the above
+if [ -z "$*" ]; then echo -e "Parameters: setup-docker [ -d | -m |  -i | -c | -s | -o | -a]\n d: disable k3\n m: misc pre-docker config tasks\n i: install docker\n c: configure docker\n s: start containers\n o: other system config\n a: all of the above"; fi
+while getopts dmicosa flag 
+do
+    case $flag in 
+    d)    disable_k3;; 
+    m)    config_sys;;
+    i)    install_docker;; 
+    c)    config_docker;;
+    o)    config_other;;
+    s)    compose_up;;
+    a)    disable_k3
+          config_sys
+          install_docker
+          config_docker
+          compose_up
+          config_other;;
+    esac
+done
+exit 0;
+

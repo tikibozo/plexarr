@@ -1,2 +1,2 @@
 #!/bin/bash
-docker exec -it $1 sh
+sudo docker exec -it $1 sh

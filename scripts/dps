@@ -1,1 +1,1 @@
-docker ps -a --format "table {{.Names}}\t{{.State}}\t{{.Status}}\t{{.Image}}"
+sudo docker ps -a --format "table {{.Names}}\t{{.State}}\t{{.Status}}\t{{.Image}}"

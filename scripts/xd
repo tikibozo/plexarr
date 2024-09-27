@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Define the fixed command to run
+COMMAND_TO_RUN="/mnt/app/home/user/compose/scripts/x"
+
+# Define a function to run the fixed command in directories beneath a specified directory
+run_command_in_directories() {
+  local start_directory="$1"
+
+  # Find all directories beneath the specified directory (no symlinks, ignore recursive paths)
+  find "$start_directory" -mindepth 1 -type d -print0 | while IFS= read -r -d '' dir; do
+#    echo "dir: $dir"
+    # Exclude the specified directory
+    if [ "$dir" != "$start_directory" ]; then
+      # Run the command in the directory
+      (cd "$dir" && "$COMMAND_TO_RUN")
+    fi
+  done
+}
+
+# Call the function with different starting directories
+run_command_in_directories "/mnt/app/download/sabnzbd/complete/audio"
+run_command_in_directories "/mnt/app/download/sabnzbd/complete/movies"
+run_command_in_directories "/mnt/app/download/sabnzbd/complete/movies4k"
+run_command_in_directories "/mnt/app/download/sabnzbd/complete/tv"
+run_command_in_directories "/mnt/app/download/sabnzbd/complete/tv4k"
+run_command_in_directories "/mnt/app/download/sabnzbd/complete/prowlarr"
+run_command_in_directories "/mnt/app/download/sabnzbd2/complete/audio"
+run_command_in_directories "/mnt/app/download/sabnzbd2/complete/movies"
+run_command_in_directories "/mnt/app/download/sabnzbd2/complete/movies4k"
+run_command_in_directories "/mnt/app/download/sabnzbd2/complete/tv"
+run_command_in_directories "/mnt/app/download/sabnzbd2/complete/tv4k"

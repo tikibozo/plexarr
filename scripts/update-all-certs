@@ -1,0 +1,29 @@
+# Run from client 
+# Update plex
+scp pfsense:/conf/acme/plex.fullchain .
+scp pfsense:/conf/acme/plex.key .
+
+#openssl pkcs12 -export -out plex.yourdomain.com.pfx -inkey plex.key -in plex.crt
+openssl pkcs12 -export -out plex.yourdomain.com.pfx \
+    -certpbe AES-256-CBC -keypbe AES-256-CBC -macalg SHA256 \
+    -inkey plex.key -in plex.fullchain
+scp plex.yourdomain.com.pfx server:~/
+ssh server sudo mv plex.yourdomain.com.pfx /mnt/app/db/plex/config/plex.yourdomain.com.pfx
+ssh server sudo chown docker:docker /mnt/app/db/plex/config/plex.yourdomain.com.pfx
+ssh server sudo chmod 600 /mnt/app/db/plex/config/plex.yourdomain.com.pfx
+ssh server sudo /usr/bin/docker restart plex
+rm -f plex.yourdomain.com.pfx plex.fullchain plex.key
+
+# Update postfix 
+scp pfsense:/conf/acme/smtp.all.pem server:~/smtp.yourdomain.com.pem
+scp pfsense:/conf/acme/smtp.key server:~/smtp.yourdomain.com.key
+ssh server 'sudo mv ~/smtp.yourdomain.com.* /mnt/app/db/postfix/certs/ && sudo chown root:root /mnt/app/db/postfix/certs/smtp.yourdomain.com.* && /mnt/app/home/jon/compose/scripts/dr postfix' 
+
+scp pfsense:/conf/acme/smtp.all.pem monserver:~/smtp.yourdomain.com.pem
+scp pfsense:/conf/acme/smtp.key monserver:~/smtp.yourdomain.com.key
+ssh monserver 'sudo mv ~/smtp.yourdomain.com.pem /etc/ssl/certs/smtp.yourdomain.com.pem && sudo chown root:root /etc/ssl/certs/smtp.yourdomain.com.pem && sudo mv ~/smtp.yourdomain.com.key /etc/ssl/private/smtp.yourdomain.com.key && sudo chown root:root /etc/ssl/private/smtp.yourdomain.com.key && sudo systemctl restart postfix && sudo systemctl status postfix'
+
+# Update zabbix
+scp pfsense:/conf/acme/zabbix.crt monserver:~/ssl.crt
+scp pfsense:/conf/acme/zabbix.key monserver:~/ssl.key
+ssh monserver 'sudo mv ~/ssl.* /data/opt/zabbix/ssl/ && sudo chown root:root /data/opt/zabbix/ssl/ssl.* && /home/jon/compose/scripts/dr zabbix-web-nginx-mysql' 

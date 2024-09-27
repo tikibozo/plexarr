@@ -1,5 +1,5 @@
 while true
 do
-  docker exec -it qbittorrent bash -c "tail -f /config/qBittorrent/logs/qbittorrent.log | grep -v 'max outstanding piece requests reached' | grep -v 'the disk queue limit is too high compared to the cache size'"
+  sudo docker exec -it qbittorrent bash -c "tail -f /config/qBittorrent/logs/qbittorrent.log | grep -v 'max outstanding piece requests reached' | grep -v 'the disk queue limit is too high compared to the cache size'"
   sleep 2
 done

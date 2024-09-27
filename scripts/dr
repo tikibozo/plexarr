@@ -1,1 +1,81 @@
-docker restart $@
+#!/bin/bash
+
+# Define container lists
+GT_CONTAINERS="gluetun prowlarr jackett autobrr lounge"
+NZBS_CONTAINERS="gluetun-nzb gluetun-nzb2 sabnzbd sabnzbd2"
+QBT_CONTAINERS="gluetun-qbt qbittorrent"
+
+# Function to show usage
+show_usage() {
+    echo "Usage: $0 [OPTIONS] [CONTAINER_NAME]"
+    echo "Restart Docker containers."
+    echo
+    echo "Options:"
+    echo "  -g              Restart base gluetun containers"
+    echo "  -n              Restart sabnzbd containers"
+    echo "  -q              Restart qbittorent containers"
+    echo "  -h              Show this help message"
+    echo
+    echo "If a CONTAINER_NAME is provided, it will restart that specific container."
+    echo "If no options or container name are provided, the script will prompt for the name of the container to restart."
+}
+
+# Function to restart containers
+restart_containers() {
+    local containers=$1
+    for container in $containers; do
+        echo "Restarting container: $container"
+        docker restart $container
+    done
+}
+
+# Check if no parameters are provided
+if [ "$#" -eq 0 ]; then
+    echo "No parameters provided."
+    show_usage
+    read -p "Enter the name of the container to restart: " container_name
+    if [ -n "$container_name" ]; then
+        echo "Restarting container: $container_name"
+        docker restart $container_name
+    else
+        echo "No container name provided. Exiting."
+        exit 1
+    fi
+    exit 0
+fi
+
+# Parse options
+while getopts ":gnqh" opt; do
+    case $opt in
+        g)
+            restart_containers "$GT_CONTAINERS"
+            exit 0
+            ;;
+
+        n)
+            restart_containers "$NZBS_CONTAINERS"
+            exit 0
+            ;;
+        q)
+            restart_containers "$QBT_CONTAINERS"
+            exit 0
+            ;;
+        h)
+            show_usage
+            exit 0
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            show_usage
+            exit 1
+            ;;
+    esac
+done
+
+# If parameters are provided but not options, assume it's a container name
+if [ -n "$1" ]; then
+    container_name=$1
+    echo "Restarting container: $container_name"
+    docker restart $container_name
+    exit 0
+fi

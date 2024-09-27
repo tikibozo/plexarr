@@ -1,22 +1,32 @@
-version: '3.8'
+networks:
+  zabbix:
+    ipam:
+      config:
+        - subnet: 172.220.0.0/16
+          gateway: 172.220.0.1
+
 services:
   zabbix-proxy:
     container_name: zabbix-proxy
     image: zabbix/zabbix-proxy-mysql:alpine-latest
     restart: unless-stopped
     ports:
-      - "10052:10051"
+      - 10052:10051
+    networks:
+      zabbix:
+        ipv4_address: 172.220.0.5
     environment:
       - ZBX_PROXYMODE=0
-      - ZBX_HOSTNAME=yourserver-proxy
-      - ZBX_SERVER_HOST=10.5.5.5:10051
-      - ZBX_STATSALLOWEDIP=10.5.5.5,127.0.0.1
+      - ZBX_HOSTNAME=server-proxy
+      - ZBX_SERVER_HOST=10.100.0.2:10051
+      - ZBX_STATSALLOWEDIP=10.100.0.2,127.0.0.1
       - DB_SERVER_HOST=mysql-server
       - DB_SERVER_PORT=3306
       - MYSQL_USER_FILE=/run/secrets/MYSQL_USER
       - MYSQL_PASSWORD_FILE=/run/secrets/MYSQL_PASSWORD
       - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/MYSQL_ROOT_PASSWORD
       - MYSQL_DATABASE=zabbix
+      - ZBX_CACHESIZE=256M
     secrets:
       - MYSQL_USER
       - MYSQL_PASSWORD
@@ -34,6 +44,8 @@ services:
       - SYS_NICE  # CAP_SYS_NICE
     ports:
       - 3306:3306
+    networks:
+      - zabbix
     command:
       - mysqld
       - --character-set-server=utf8mb4
@@ -54,16 +66,15 @@ services:
   db_data_mysql:
     container_name: db_data_mysql
     image: busybox
-    volumes:
-      - /internal/opt/zabbixproxy/var/lib/mysql:/var/lib/mysql:rw
+    networks:
+      - zabbix
 
-
-  zabbix:
+  zabbix-agent2:
     container_name: zabbix-agent2
     image: zabbix/zabbix-agent2:ubuntu-6.2-latest
     environment:
-      - ZBX_HOSTNAME=yourserver
-      - ZBX_SERVER_HOST=172.27.0.1
+      - ZBX_HOSTNAME=server
+      - ZBX_SERVER_HOST=172.220.0.1
       - ZBX_SERVER_PORT=10052
       - ZBX_DEBUGLEVEL=3
       - ZBX_ENABLEPERSISTENTBUFFER=true
@@ -71,8 +82,12 @@ services:
       - 10050:10050/tcp
       - 10051:10051/tcp
       - 31999:31999/tcp
+    networks:
+      - zabbix
     volumes:
-      - /mnt/app/db/zabbix:/var/lib/zabbix/buffer
+      - /mnt/app/db/zabbixagent2/db:/var/lib/zabbix/buffer
+      - /mnt/app/db/zabbixagent2/agentd.d:/etc/zabbix/zabbix_agentd.d
+      - /mnt/app/db/zabbixagent2/sudoers:/etc/sudoers
       - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
     privileged: true

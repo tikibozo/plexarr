@@ -1,0 +1,52 @@
+#!/bin/bash
+# If you don't often invite users and want to reduce your attack surface, 
+# this enables/disables wizarr by commenting out the service in the compose 
+# file. Monitoring won't freak since it isn't a stopped container, and it 
+# won't get restarted each night by the updater.
+
+# Hardcoded path to the Docker Compose file
+DOCKER_COMPOSE_FILE="/mnt/app/home/user/compose/nas/docker-compose.yml"
+
+# Check if parameters are provided
+if [[ $# -ne 1 ]]; then
+    echo "Usage: wizarr [up|down]"
+    exit 1
+fi
+
+# Check if Docker Compose file exists
+if [[ ! -f "$DOCKER_COMPOSE_FILE" ]]; then
+    echo "Docker Compose file not found at $DOCKER_COMPOSE_FILE"
+    exit 1
+fi
+
+
+# Function to uncomment the wizarr service block
+uncomment_wizarr_service() {
+    sed -i '/^#\s*wizarr:/,/^\s*$/ s/^#\?//' "$DOCKER_COMPOSE_FILE"
+}
+
+# Function to comment out the wizarr service block
+comment_wizarr_service() {
+    sed -i '/^\s*wizarr:/,/^\s*$/ s/^/#/' "$DOCKER_COMPOSE_FILE"
+}
+
+
+# Execute the appropriate action based on the parameter
+case $1 in
+    "up")
+        # Uncomment the wizarr service block
+        uncomment_wizarr_service
+        # Run `dcoup` command from the directory
+        cd "$(dirname "$DOCKER_COMPOSE_FILE")" && dcoup
+        ;;
+    "down")
+        # Comment out the wizarr service block
+        comment_wizarr_service
+        # Run `dco up` command with additional options
+        cd "$(dirname "$DOCKER_COMPOSE_FILE")" && dco up -d --remove-orphans
+        ;;
+    *)
+        echo "Invalid parameter. Usage: wizarr [up|down]"
+        exit 1
+        ;;
+esac
