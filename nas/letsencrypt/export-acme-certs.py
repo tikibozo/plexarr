@@ -12,8 +12,6 @@
 # There's a .gitignore in this directory for *.pem, but careful not to commit
 # your keys!
 #
-# 5-Mar-2022 Jon LeCroy
-#
 import json
 import base64
 import os
