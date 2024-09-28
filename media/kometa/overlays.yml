@@ -11,7 +11,7 @@ templates:
     collection_level: <<overlay_level>>
     overlay:
       name: <<overlay_name>>
-      git: PMM/overlays/images/<<overlay_name>>.png
+      git: KOMETA/overlays/images/<<overlay_name>>.png
       group: res
       weight: <<weight>>
       horizontal_offset: <<horizontal_offset>>

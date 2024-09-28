@@ -57,7 +57,7 @@ collections:
     sort_title: 'Marvel Cinematic Universe'
     collection_order: release.desc
     collection_mode: default
-    sync_mode: sync
+    sync_mode: append
     url_poster: https://theposterdb.com/api/assets/26227
     schedule: weekly(thursday) 
 
@@ -67,17 +67,32 @@ collections:
     sort_title: 'DC Cinematic Universe'
     collection_order: release.desc
     collection_mode: default
-    sync_mode: sync
+    sync_mode: append
     url_poster: https://theposterdb.com/api/assets/113155
     schedule: weekly(thursday) 
 
   Criterion Collection:
-    imdb_list: https://www.imdb.com/search/title/?lists=ls090936109
+    imdb_list:
+      - https://www.imdb.com/list/ls577647608/
+      - https://www.imdb.com/list/ls087831830/
+      - https://www.imdb.com/list/ls002973086/
     sort_title: 'Criterion'
-    sync_mode: sync
+    sync_mode: append
     url_poster: https://theposterdb.com/api/assets/206770
     collection_order: alpha 
     schedule: monthly(1) 
+
+  Timeout 100 Best Movies of All Time:
+    imdb_list: https://www.imdb.com/list/ls538972757
+    sort_title: 'Timeout'
+    sync_mode: sync
+   #url_poster: https://media.timeout.com/images/102796952/380/285/image.jpg
+    collection_order: alpha 
+    schedule: monthly(4) 
+    summary: "The 100 best movies of all time (timeout.com)
+
+When it comes to greatness in art, nothing is set in stone. There is no such thing as an objective, definitive canon, no matter the medium, and no matter what a media outlet may tell you when it releases a list of, oh, say, the greatest movies ever made – present company included. Sure, it’s a surefire way to get readers clicking. But we’re not so foolish as to think of ourselves like Moses on the mountain, proclaiming these films as the best of all-time, with no room for debate. Instead, we’re merely hoping to shake up (and in some spots confirm) the conventional wisdom, introduce different perspectives and, maybe most importantly, spark passionate debate. Because the only thing better than watching movies is arguing over them.
+Don’t get us wrong, though: we feel pretty strongly about movies over here, and we’ll defend  our picks until our throats are raw and our typing fingers worn down to nubs. But we’re not brutes. Really, we’re just trying to help. If you’re a fledgling cinephile looking to solidify your film-buff bona fides, think of this as a handy reference guide. And if you’ve already seen everything, take it as a way to challenge your own canon. Because with all the ground covered here – over 100 years, multiple countries, and just about every genre imaginable – you’re bound to find something you disagree with."
 
       #  Trending:
       # trakt_trending: 30
@@ -92,7 +107,7 @@ collections:
     imdb_list: https://www.imdb.com/list/ls031689972/
       #mdblist_list: https://mdblist.com/lists/awesomeaustn/cirque-du-soleil
     sort_title: 'Cirque du Soleil'
-    sync_mode: sync
+    sync_mode: append
     collection_mode: default
     collection_order: release
     schedule: weekly(thursday) 
@@ -107,7 +122,7 @@ Toho Company, Limited (東宝株式会社 Tōhō Kabushiki Gaisha), officially s
 
 The company's most famous creation, Godzilla, was co-created by producer Tomoyuki Tanaka."
 
-    sync_mode: sync
+    sync_mode: append
     collection_mode: default
     collection_order: release.desc
     schedule: monthly(4)
@@ -143,6 +158,7 @@ The company's most famous creation, Godzilla, was co-created by producer Tomoyuk
     imdb_list: 
       - https://www.imdb.com/list/ls076439519/
       - https://www.imdb.com/list/ls068907948/ 
+      - https://www.imdb.com/list/ls012571053/
 
   James Bond:
     template: {name: Movie, collection: 645, summary: 645, poster: https://theposterdb.com/api/assets/115662, sort: "James Bond"}
@@ -160,7 +176,20 @@ The company's most famous creation, Godzilla, was co-created by producer Tomoyuk
     template: {name: Movie, collection: 31562, summary: 31562, poster: https://theposterdb.com/api/assets/164761, sort: "Bourne Identity Series"}
   Indiana Jones:
     template: {name: Movie, collection: 84, summary: 84, poster: https://theposterdb.com/api/assets/53369, sort: "Indiana Jones"}
-  
+
+  The Lord of the Rings:
+    sync_mode: append 
+    sort_title: 'Lord of the Rings'
+    collection_mode: default
+    collection_order: release.asc
+    schedule: weekly(thursday) 
+    url_poster: https://www.themoviedb.org/t/p/original/7UJVffR2haKcGUKVTtCQcyudsNr.jpg
+    imdb_list: 
+      - https://www.imdb.com/list/ls055713151/
+    summary: "Set in the fictional world of Middle-earth, the films follow the hobbit Frodo Baggins as he and the Fellowship embark on a quest to destroy the One Ring, to ensure the destruction of its maker, the Dark Lord Sauron. The Fellowship eventually splits up and Frodo continues the quest with his loyal companion Sam and the treacherous Gollum. Meanwhile, Aragorn, heir in exile to the throne of Gondor, along with the elf Legolas, the dwarf Gimli, Merry, Pippin, and the wizard Gandalf, unite to save the Free Peoples of Middle-earth from the forces of Sauron and rally them in the War of the Ring to aid Frodo by distracting Sauron's attention.
+
+The three films were shot simultaneously in Jackson's native New Zealand from 11 October 1999 until 22 December 2000, with pick-up shots done from 2001 to 2003. It was one of the biggest and most ambitious film projects ever undertaken, with a budget of $281 million (equivalent to $494 million in 2022). The first film in the series premiered at the Odeon Leicester Square in London on 10 December 2001; the second film premiered at the Ziegfeld Theatre in New York City on 5 December 2002; the third film premiered at the Embassy Theatre in Wellington on 1 December 2003. An extended edition of each film was released on home video a year after its release in cinemas."
+
   Mads Mikkelsen:
     sync_mode: append 
     sort_title: 'Mads Mikkelsen'
@@ -203,9 +232,9 @@ Del Toro is close friends with fellow Mexican filmmakers Alfonso Cuarón and Ale
   Oscar Nominees:
     sync_mode: append
     sort_title: 'aaaaa'
-    summary: 2023 Best Picture, Director, Actor/Actress, Supporting Actor/Actress Nominees (As available)
+    summary: Best Picture, Director, Actor/Actress, Supporting Actor/Actress, Animated, Shorts, International, etc.  Nominees (As available)
     collection_mode: default
-    collection_order: alpha
+    collection_order: release.desc
     schedule: weekly(wednesday)
     url_poster: https://i.imgur.com/0Kao9gY.jpeg
     imdb_list:

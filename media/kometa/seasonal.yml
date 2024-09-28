@@ -6,7 +6,7 @@
 #  If nothing is specified these are the defaults           #
 #                                                           #
 #    metadata_path:                                         #
-#      - git: PMM/movie/seasonal                            #
+#      - git: KOMETA/movie/seasonal                            #
 #        template_variables:                                #
 #          # Sets the collection mode of the collection     #
 #          collection_mode:                                 #
@@ -71,7 +71,7 @@
 #############################################################
 
 external_templates:
-  git: PMM/templates
+  git: KOMETA/templates
 
 templates:
   Holiday:
@@ -87,10 +87,10 @@ templates:
     delete_not_scheduled: true
 
 collections:
-  Seasonal Collections:
-    template:
-      - name: separator off
-        separator: seasonal
+#  Seasonal Collections:
+#    template:
+#    - name: separator
+#      separator: seasonal
 
 #  Independence Day:
 #    variables:
@@ -188,18 +188,18 @@ collections:
 #    tmdb_movie:
 #      - 23437    # A Nightmare on Elm Street (2010)
 
-#  Christmas:
-#    variables:
-#      key: christmas
-#    template:
-#      - name: Holiday
-#        schedule_christmas: range(12/01-12/31)
-#      - name: shared
-#        visible_home_<<key>>: true
-#        visible_shared_<<key>>: true
-#        image: seasonal/<<key>>
-#      - name: arr
-#    imdb_list: https://www.imdb.com/list/ls000096828/
+  Christmas:
+    variables:
+      key: christmas
+    template:
+      - name: Holiday
+        schedule_christmas: range(12/01-12/31)
+      - name: shared
+        visible_home_<<key>>: range(12/01-12/31) 
+        visible_shared_<<key>>: range(12/01-12/31)
+        image: seasonal/<<key>>
+      - name: arr
+    imdb_list: https://www.imdb.com/list/ls054494666/
 
 #  New Year's Day:
 #    variables:

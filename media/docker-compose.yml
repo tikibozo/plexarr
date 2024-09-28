@@ -201,14 +201,14 @@ services:
       - 8181:8181
     restart: unless-stopped
 
-  pmm: # Needs to be migrated to kometa
-    image: meisnate12/plex-meta-manager:latest
-    container_name: pmm
+  kometa:
+    image: kometateam/kometa:latest
+    container_name: kometa
     environment:
-      - PMM_CONFIG=/config/config.yml
-      - PMM_TIME=10:00
+      - KOMETA_CONFIG=/config/config.yml
+      - KOMETA_TIMES=10:00
     volumes:
-      - /mnt/app/db/pmm:/config
+      - /mnt/app/db/kometa:/config
       - ./pmm/r:/r
       - ./pmm/rc:/rc
       - ./pmm/ov:/ov

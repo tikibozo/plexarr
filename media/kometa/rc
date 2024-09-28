@@ -1,0 +1,1 @@
+python3 kometa.py -is --run-collections "$@" 

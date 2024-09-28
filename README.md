@@ -27,7 +27,7 @@ Stack contents:
     - [Prowlarr](https://github.com/prowlarr/prowlarr) / [Jackett](https://github.com/Jackett/Jackett) / [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) - Indexer management
     - [Gluetun](https://github.com/qdm12/gluetun) / [GSP-Qbittorrent-Gluetun-sync-port-mod](https://github.com/t-anc/GSP-Qbittorent-Gluetun-sync-port-mod) - VPN
     - [Tautulli](https://tautulli.com/) - Plex monitoring/notifications
-    - [Plex Meta Manager](https://metamanager.wiki/en/latest/) - Dynamic collections/overlays
+    - [Kometa](https://kometa.wiki/en/latest/) - Dynamic collections/overlays
     - [qBittorrent](https://www.qbittorrent.org/) / [SABnzbd](https://sabnzbd.org/) - Download
     - [Autobrr](https://autobrr.com/) / [TheLounge](https://thelounge.chat/) - IRC Announces
     - [Unpackerr](https://github.com/Unpackerr/unpackerr) - Archive extraction
