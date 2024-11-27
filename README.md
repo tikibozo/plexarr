@@ -20,7 +20,7 @@ You might be asking "wait, TrueNAS Scale with docker compose?" Yes, [standing on
 On to the software stack. I've divided the system into multiple compose projects. This was initially for portability, so I could "down" a project on one system, copy the config files to another, and with an "up" have moved the whole stack somewhere else. Now that it's all on the same system, it also allows me to rebuild the media project without affecting user facing services.
 
 Stack contents:
--  media: This is the main arr stack, which includes
+-  [media](https://github.com/tikibozo/plexarr/blob/main/media/docker-compose.yml): This is the main arr stack, which includes
     - [Radarr](https://radarr.video/) / [Sonarr](https://sonarr.tv/) / [Lidarr](https://lidarr.audio/) / [Arr Scripts](https://github.com/RandomNinjaAtk/arr-scripts) - Media management
     - [Bazarr](https://www.bazarr.media/) / [Subcleaner](https://github.com/KBlixt/subcleaner) / [Whisper](https://github.com/ahmetoner/whisper-asr-webservice) - Subtitles
     - [Recyclarr](https://github.com/recyclarr/recyclarr) / [TRaSH Guides](https://trash-guides.info/) - Release picking optimizations 
@@ -33,17 +33,17 @@ Stack contents:
     - [Unpackerr](https://github.com/Unpackerr/unpackerr) - Archive extraction
     - [Tdarr](https://home.tdarr.io/) - Transcoding
     - [Organizr](https://github.com/causefx/Organizr) + [Homepage](https://github.com/benphelps/homepage) - Dashboard
-- nas: User facing services
+- [nas](https://github.com/tikibozo/plexarr/blob/main/nas/docker-compose.yml): User facing services
     - [Plex](https://plex.tv) - Media server
     - [Overseerr](https://overseerr.dev/) - Web requests/notifications
     - [Requestrr](https://github.com/thomst08/requestrr) - Discord requests
     - [Wizarr](https://github.com/Wizarrrr/wizarr) - New user signup
     - [Traefik](https://github.com/traefik/traefik)  - Reverse proxy
-- sys: System services
+- [sys](https://github.com/tikibozo/plexarr/blob/main/sys/docker-compose.yml): System services
     - [Postfix](https://github.com/loganmarchione/docker-postfixrelay) - SMTP relay
     - [Checkrr](https://github.com/aetaric/checkrr) - Bitrot detection & remediation 
     - [Rclone](https://rclone.org/) - Backups
-- mon/monproxy: Monitoring
+- [mon](https://github.com/tikibozo/plexarr/blob/main/mon/docker-compose.yml)/[monproxy](https://github.com/tikibozo/plexarr/blob/main/monproxy/docker-compose.yml): Monitoring
     - [Zabbix](https://www.zabbix.com/) - Monitoring & alerting server
     - [Pushover](https://pushover.net/) - Mobile push notifications
 
