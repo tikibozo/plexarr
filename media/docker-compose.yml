@@ -165,6 +165,16 @@ services:
       - 6868:6868
     restart: unless-stopped
       
+  whisper:
+    image: onerahmet/openai-whisper-asr-webservice:latest
+    container_name: whisper
+    environment:
+      - ASR_MODEL=medium
+      - ASR_ENGINE=faster_whisper
+    ports:
+      - 9001:9000
+    restart: unless-stopped
+
   autobrr:
     container_name: autobrr
     image: ghcr.io/autobrr/autobrr:latest

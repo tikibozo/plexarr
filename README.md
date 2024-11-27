@@ -22,7 +22,7 @@ On to the software stack. I've divided the system into multiple compose projects
 Stack contents:
 -  media: This is the main arr stack, which includes
     - [Radarr](https://radarr.video/) / [Sonarr](https://sonarr.tv/) / [Lidarr](https://lidarr.audio/) / [Arr Scripts](https://github.com/RandomNinjaAtk/arr-scripts) - Media management
-    - [Bazarr](https://www.bazarr.media/) / [Subcleaner](https://github.com/KBlixt/subcleaner) - Subtitles
+    - [Bazarr](https://www.bazarr.media/) / [Subcleaner](https://github.com/KBlixt/subcleaner) / [Whisper](https://github.com/ahmetoner/whisper-asr-webservice) - Subtitles
     - [Recyclarr](https://github.com/recyclarr/recyclarr) - [TRaSH Guides](https://trash-guides.info/), Critical optimizations
     - [Prowlarr](https://github.com/prowlarr/prowlarr) / [Jackett](https://github.com/Jackett/Jackett) / [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) - Indexer management
     - [Gluetun](https://github.com/qdm12/gluetun) / [GSP-Qbittorrent-Gluetun-sync-port-mod](https://github.com/t-anc/GSP-Qbittorent-Gluetun-sync-port-mod) - VPN
