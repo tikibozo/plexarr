@@ -3,7 +3,7 @@ One bozo's example of how to automate your entertainment.
 
 So this is a sanitized version of what I'm running. My hope is someone getting started finds this and it helps them in some way. Linux filesystems, permissions, docker compose, networking, etc. knowledge is assumed. I did all this with a lot of searching around the internet to cobble everything together - so it's all out there.
 
-In order to adapt this for your use it'll help to know some details about my topology so you can copy them or adjust as appropriate. While I've consolidated everything down to one router and one server (about to move/downsize my living arrangements), this was originally distributed such that storage + plex was on one system, and another system had all the arrs to manage media. Essentially which system you use the various compose projects on is up to you. Similarly, I moved monitoring into Azure with a local proxy, but you could either not use that stuff at all, or run the server on your network as I was initially doing.
+In order to adapt this for your use it'll help to know some details about my topology so you can copy them or adjust as appropriate. While I've consolidated everything down to one router and one server (below), this was originally distributed such that storage + plex was on one system, and another system had all the arrs to manage media. Essentially which system you use the various compose projects on is up to you. Similarly, I moved monitoring into Azure with a local proxy, but you could either not use that stuff at all, or run the server on your network as I was initially doing.
 
 Using Homepage inside Organizer to replace it's summary page is pretty slick it turns out:
 ![Dashboard using Homepage in Organizr](./homepage_organizr.png?raw=true "Dashboard using Homepage in Organizr")
@@ -23,7 +23,7 @@ Stack contents:
 -  media: This is the main arr stack, which includes
     - [Radarr](https://radarr.video/) / [Sonarr](https://sonarr.tv/) / [Lidarr](https://lidarr.audio/) / [Arr Scripts](https://github.com/RandomNinjaAtk/arr-scripts) - Media management
     - [Bazarr](https://www.bazarr.media/) / [Subcleaner](https://github.com/KBlixt/subcleaner) / [Whisper](https://github.com/ahmetoner/whisper-asr-webservice) - Subtitles
-    - [Recyclarr](https://github.com/recyclarr/recyclarr) - [TRaSH Guides](https://trash-guides.info/), Critical optimizations
+    - [Recyclarr](https://github.com/recyclarr/recyclarr) / [TRaSH Guides](https://trash-guides.info/) - Release picking optimizations 
     - [Prowlarr](https://github.com/prowlarr/prowlarr) / [Jackett](https://github.com/Jackett/Jackett) / [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) - Indexer management
     - [Gluetun](https://github.com/qdm12/gluetun) / [GSP-Qbittorrent-Gluetun-sync-port-mod](https://github.com/t-anc/GSP-Qbittorent-Gluetun-sync-port-mod) - VPN
     - [Tautulli](https://tautulli.com/) - Plex monitoring/notifications
@@ -72,5 +72,4 @@ That said, there are some random bits of context or ideas that may help you, so 
 - UID/GID. Most all the files/directories are configured to use docker:docker (999:999), though some containers prefer their config files to be owned by root.
 - Jackett is only there because I've got one stubborn indexer that won't play nicely in Prowlarr. Everything else is in Prowlarr because with 5 arr instances I got tired of setting up each indexer individually. Reddit is, or maybe was, a good place to look for these.
 - There are a bunch of dumb helper scripts in /scripts because I got tired of typing commands out. There's also nas-daily.sh which updates docker images (pull & up) and a script to update Azure firewall rules based on dynamic IP changes. Add your user account to the docker group so you don't have to sudo every docker command.
-- /dev/dri is for the Intel GPU. Add docker to the video group or set the device's group to docker. There's an nvidia quadro p4000 in the system but I've been having a hell of a time getting that working, though the cpu alone has been plenty so it was apparently massive overkill, but I'll take it :) (wanted to future-proof against multiple 4k streams, etc.)
 - 1080p & 4k *arr instances. This is the "old" way of partitioning 4k content. I prefer it since I don't often use 4k media (yet) and by having seperate instances it's easy to point dedicated Plex libraries at the 4k directories (and not share with Plex users.) Also Overseerr supports this setup and lights up additional support for requesting in 1080/standard and 4k when you add multiple instances and configure them for 4k. Plex's editions support (or simply transcoding hw heft) can alleviate the need for the addionional services, but extra sonarr/radarr instances are relatively cheap imho.
