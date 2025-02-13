@@ -12,7 +12,7 @@ Using Homepage inside Organizer to replace it's summary page is pretty slick it 
 From a network & hardware perspective it's straightforward:
 Internet <-> PFSense <-> TrueNAS Scale
 - [PFsense+ (Home/free)](https://www.netgate.com/pfsense-plus-software/software-types) on a [Protectli FW6](https://protectli.com/vault-6-port/)
-- [TrueNAS Scale](https://www.truenas.com/truenas-scale) - [Custom 100TB build](https://www.truenas.com/community/threads/hw-build-review-truenas-scale-plex.109434/#post-755881)
+- [TrueNAS Scale](https://www.truenas.com/truenas-scale) - [Custom 200TB build](https://www.truenas.com/community/threads/hw-build-review-truenas-scale-plex.109434/#post-755881)
 
 You might be asking "wait, TrueNAS Scale with docker compose?" Yes, [standing on the shoulders of others](https://static.xtremeownage.com/blog/2021/truenas-scale-use-vanilla-docker/#step-1-startup-scripts) I hacked docker back to standard and disabled k3s. This is not supported or a path for beginners, but has yeilded me exactly the system I wanted. That is, one with NAS storage resilience but not flaky community packages or goofy windowed UI.
 
