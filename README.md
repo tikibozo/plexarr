@@ -19,7 +19,7 @@ On to the software stack. I've divided the system into multiple compose projects
 
 Stack contents:
 -  [media](https://github.com/tikibozo/plexarr/blob/main/media/docker-compose.yml): This is the main arr stack, which includes
-    - [Radarr](https://radarr.video/) / [Sonarr](https://sonarr.tv/) / [Lidarr](https://lidarr.audio/) / [Arr Scripts](https://github.com/RandomNinjaAtk/arr-scripts) - Media management
+    - [Radarr](https://radarr.video/) / [Sonarr](https://sonarr.tv/) / [Lidarr](https://lidarr.audio/) / [Arr Scripts](https://github.com/RandomNinjaAtk/arr-scripts) / [Huntarr](https://github.com/plexguide/Huntarr.io) - Media management
     - [Bazarr](https://www.bazarr.media/) / [Subcleaner](https://github.com/KBlixt/subcleaner) / [Whisper](https://github.com/ahmetoner/whisper-asr-webservice) - Subtitles
     - [Recyclarr](https://github.com/recyclarr/recyclarr) / [TRaSH Guides](https://trash-guides.info/) - Release picking optimizations 
     - [Prowlarr](https://github.com/prowlarr/prowlarr) / [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) - Indexer management
