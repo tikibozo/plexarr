@@ -1,24 +1,17 @@
 services:
   postfix:
     container_name: postfix
-    image: loganmarchione/docker-postfixrelay:latest
+    image: boky/postfix:latest
     ports:
       - 25:25/tcp
-    environment:
-      - TZ=Your/Region
-      - RELAY_HOST=smtp.office365.com
-      - RELAY_PORT=587
-      - RELAY_USER=upn@domain.com
-      - RELAY_PASS=pass
-      - MYORIGIN=yourdomain.com
-      - MYNETWORKS=1.1.1.1/1 2.2.2.2/2
+    env_file:
+      - ./postfix/postfix.env
     volumes:
       - /mnt/app/db/postfix/queue:/var/spool/postfix
-      - /mnt/app/db/postfix/certs/smtp.yourdomain.com.pem:/etc/ssl/certs/smtp.yourdomain.com.pem
-      - /mnt/app/db/postfix/certs/smtp.yourdomain.com.key:/etc/ssl/private/smtp.yourdomain.com.key
-      - /mnt/app/db/postfix/config/entrypoint.sh:/entrypoint.sh
-      - /mnt/app/db/postfix/config/header_check:/etc/postfix/header_check
-      - /mnt/app/db/postfix/config/sender_canonical_maps:/etc/postfix/sender_canonical_maps
+      - /mnt/app/db/postfix/certs/smtp.yourdomain.com.pem:/etc/ssl/certs/smtp.yourdomain.com.pem:ro
+      - /mnt/app/db/postfix/certs/smtp.yourdomain.com.key:/etc/ssl/private/smtp.yourdomain.com.key:ro
+      - ./postfix/sender_canonical_maps:/etc/postfix/sender_canonical_maps:ro
+    restart: unless-stopped
 
   checkrr:
     container_name: checkrr
@@ -44,7 +37,7 @@ services:
       - /dev/fuse:/dev/fuse
       - /mnt/data:/data
       - /mnt/app:/opt
-      - /mnt/app/home/jon/compose/sys/rclone/rclone-daily.sh:/rclone-daily.sh
+      - /mnt/app/home/user/compose/sys/rclone/rclone-daily.sh:/rclone-daily.sh
       - /tmp/rclone:/htmp
     restart: unless-stopped
     cap_add:

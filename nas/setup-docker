@@ -57,7 +57,7 @@ install_docker() {
 # Set docker config 
 config_docker() {
     echo "Copy daemon config"
-    cp /mnt/app/home/jon/compose/nas/daemon.json /etc/docker/daemon.json
+    cp /mnt/app/home/user/compose/nas/daemon.json /etc/docker/daemon.json
     touch /etc/docker.env
     echo "Enable and start docker daemon"
     systemctl enable docker
@@ -67,11 +67,11 @@ config_docker() {
 
 # "Up" the relevant compose projects to restore/start containers
 compose_up() {
-    /mnt/app/home/jon/compose/scripts/up
+    /mnt/app/home/user/compose/scripts/up
     sleep 2
-    /mnt/app/home/jon/compose/scripts/up
+    /mnt/app/home/user/compose/scripts/up
     sleep 2
-    /mnt/app/home/jon/compose/scripts/up
+    /mnt/app/home/user/compose/scripts/up
 }
 
 # Other non-standard system configuration needs 

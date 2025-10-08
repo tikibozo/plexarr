@@ -6,6 +6,8 @@ services:
       - NET_ADMIN
     volumes:
       - /mnt/app/db/gluetun:/gluetun
+    devices:
+      - /dev/net/tun:/dev/net/tun
     environment:
       - VPN_SERVICE_PROVIDER=private internet access
       - SERVER_REGIONS=SOME_REGION
@@ -14,33 +16,17 @@ services:
       - OPENVPN_USER=user
       - OPENVPN_PASSWORD=pass
       - FIREWALL_OUTBOUND_SUBNETS=1.1.1.1/1
-      - HTTP_CONTROL_SERVER_ADDRESS=:8000
+      - HTTP_CONTROL_SERVER_ADDRESS=:8011
     ports:
       - 8888:8888/tcp # HTTP
       - 8388:8388/tcp # Shadowsocks
       - 8388:8388/udp # Shadowsocks
-      - 9117:9117/tcp # jackett
       - 8191:8191/tcp # flaresolverr
       - 9696:9696/tcp # prowlarr
       - 7474:7474/tcp # autobrr
       - 9000:9000/tcp # thelounge
-      - 8000:8000 #control server
+      - 8011:8011 #control server
     restart: unless-stopped
-
-  jackett:
-    image: lscr.io/linuxserver/jackett
-    container_name: jackett
-    environment:
-      - PUID=999
-      - PGID=999
-      - TZ=Some/Region
-    volumes:
-      - /mnt/app/db/jackett/config:/config
-      - /mnt/app/db/jackett/downloads:/downloads
-    network_mode: "service:gluetun"
-    restart: unless-stopped
-    depends_on:
-      - gluetun
 
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:develop
@@ -57,7 +43,7 @@ services:
       - gluetun
 
   sonarr:
-    image: lscr.io/linuxserver/sonarr:develop
+    image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr
     environment:
       - PUID=999
@@ -67,13 +53,13 @@ services:
       - /mnt/app/db/sonarr/custom-cont-init.d:/custom-cont-init.d
       - /mnt/app/db/sonarr/custom-services.d:/custom-services.d
       - /mnt/data:/data
-      - /mnt/app/download:/internal
+      - /mnt/app/download:/download
     ports:
       - 8989:8989
     restart: unless-stopped
 
   sonarr4k:
-    image: lscr.io/linuxserver/sonarr:develop
+    image: lscr.io/linuxserver/sonarr:latest
     container_name: sonarr4k
     environment:
       - PUID=999
@@ -81,7 +67,7 @@ services:
     volumes:
       - /mnt/app/db/sonarr4k/config:/config
       - /mnt/data:/data
-      - /mnt/app/download:/internal
+      - /mnt/app/download:/download
     ports:
       - 9090:9090
     restart: unless-stopped
@@ -97,9 +83,9 @@ services:
       - /mnt/app/db/radarr/custom-cont-init.d:/custom-cont-init.d
       - /mnt/app/db/radarr/custom-services.d:/custom-services.d
       - /mnt/data:/data
-      - /mnt/app/download:/internal
+      - /mnt/app/download:/download
     ports:
-      - 7878:7878 
+      - 7878:7878
     restart: unless-stopped
 
   radarr4k:
@@ -111,9 +97,9 @@ services:
     volumes:
       - /mnt/app/db/radarr4k/config:/config
       - /mnt/data:/data
-      - /mnt/app/download:/internal
+      - /mnt/app/download:/download
     ports:
-      - 7979:7979 
+      - 7979:7979
     restart: unless-stopped
 
   lidarr:
@@ -128,11 +114,11 @@ services:
       - /mnt/app/db/lidarr/custom-services.d:/custom-services.d
       - /mnt/app/db/lidarr/custom-cont-init.d:/custom-cont-init.d
       - /mnt/data:/data
-      - /mnt/app/download:/internal
+      - /mnt/app/download:/download
       - /mnt/data/media/music-videos:/music-videos
       - /mnt/data/media/music-lidarr-extended:/downloads-lidarr-extended
     ports:
-      - 8686:8686 
+      - 8686:8686
     restart: unless-stopped
 
   bazarr:
@@ -164,13 +150,16 @@ services:
     ports:
       - 6868:6868
     restart: unless-stopped
-      
+
   whisper:
     image: onerahmet/openai-whisper-asr-webservice:latest
     container_name: whisper
     environment:
-      - ASR_MODEL=medium
-      - ASR_ENGINE=faster_whisper
+      - ASR_MODEL=distil-large-v3
+      - ASR_ENGINE=whisperx
+      - ASR_DEVICE=cpu
+      - ASR_QUANTIZATION=float32
+      - HF_TOKEN=hf_token_here
     ports:
       - 9001:9000
     restart: unless-stopped
@@ -219,9 +208,10 @@ services:
       - KOMETA_TIMES=10:00
     volumes:
       - /mnt/app/db/kometa:/config
-      - ./pmm/r:/r
-      - ./pmm/rc:/rc
-      - ./pmm/ov:/ov
+      - ./kometa/r:/r
+      - ./kometa/rc:/rc
+      - ./kometa/rc:/rf
+      - ./kometa/ov:/ov
     restart: unless-stopped
 
   recyclarr:
@@ -232,7 +222,18 @@ services:
     user: 999:999
     volumes:
       - /mnt/app/db/recyclarr:/config
-        
+
+  huntarr:
+    image: huntarr/huntarr:latest
+    container_name: huntarr
+    environment:
+      - TZ=Some/Region
+    volumes:
+      - /mnt/app/db/huntarr:/config
+    ports:
+      - 9705:9705
+    restart: unless-stopped
+
   flaresolverr:
     # DockerHub mirror flaresolverr/flaresolverr:latest
     image: ghcr.io/flaresolverr/flaresolverr:latest
@@ -261,21 +262,22 @@ services:
       - OPENVPN_USER=user
       - OPENVPN_PASSWORD=pass
       - FIREWALL_OUTBOUND_SUBNETS=1.1.1.1/1
-      - HTTP_CONTROL_SERVER_ADDRESS=:8001
+      - HTTP_CONTROL_SERVER_ADDRESS=:8005
     volumes:
       - /mnt/app/db/gluetun-qbt:/gluetun
+    devices:
+      - /dev/net/tun:/dev/net/tun
     ports:
       - 6881:6881 #BT
       - 6881:6881/udp #qBT
       - 8081:8081 #qBT
-      - 8001:8001 #control server
+      - 8005:8005 #control server
     restart: unless-stopped
     cap_add:
       - NET_ADMIN
 
   qbittorrent:
-    #image: lscr.io/linuxserver/qbittorrent:latest
-    image: lscr.io/linuxserver/qbittorrent:4.6.6-r0-ls348
+    image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
     environment:
       - PUID=999
@@ -284,37 +286,15 @@ services:
       - WEBUI_PORT=8081
       - DOCKER_MODS=ghcr.io/t-anc/gsp-qbittorent-gluetun-sync-port-mod:main
       - GSP_QBT_ADDR=http://localhost:8081
-      - GSP_GTN_ADDR=http://localhost:8001
+      - GSP_GTN_ADDR=http://localhost:8005
       - GSP_GTN_API_KEY=keyy
     volumes:
       - /mnt/app/db/qbittorrent:/config
-      - /mnt/app/download/qbittorrent:/data
+      - /mnt/transcode/download:/download
     network_mode: "service:gluetun-qbt"
     depends_on:
       - gluetun-qbt
     restart: unless-stopped
-
-  gluetun-nzb:
-    image: qmcgaw/gluetun:latest
-    container_name: gluetun-nzb
-    environment:
-      - VPN_SERVICE_PROVIDER=private internet access
-      - SERVER_REGIONS=SOME_REGION
-      - SHADOWSOCKS=on
-      - HTTPPROXY=on
-      - OPENVPN_USER=user
-      - OPENVPN_PASSWORD=pass
-      - FIREWALL_OUTBOUND_SUBNETS=1.1.1.1/1
-      - DNS_ADDRESS=9.9.9.9
-      - HTTP_CONTROL_SERVER_ADDRESS=:8002
-    volumes:
-      - /mnt/app/db/gluetun-nzb:/gluetun
-    ports:
-      - 8085:8085 #sabnzbd
-      - 8002:8002 #control server
-    restart: unless-stopped
-    cap_add:
-      - NET_ADMIN
 
   sabnzbd:
     image: lscr.io/linuxserver/sabnzbd:latest
@@ -325,47 +305,9 @@ services:
       - TZ=Some/Region
     volumes:
       - /mnt/app/db/sabnzbd:/config
-      - /mnt/app/download/sabnzbd:/downloads
-    network_mode: "service:gluetun-nzb"
-    depends_on:
-      - gluetun-nzb
-    restart: unless-stopped
-
-  gluetun-nzb2:
-    image: qmcgaw/gluetun:latest
-    container_name: gluetun-nzb2
-    environment:
-      - VPN_SERVICE_PROVIDER=private internet access
-      - SERVER_REGIONS=SOME_REGION
-      - SHADOWSOCKS=on
-      - HTTPPROXY=on
-      - OPENVPN_USER=user
-      - OPENVPN_PASSWORD=pass
-      - FIREWALL_OUTBOUND_SUBNETS=1.1.1.1/1
-      - DNS_ADDRESS=9.9.9.9
-      - HTTP_CONTROL_SERVER_ADDRESS=:8003
-    volumes:
-      - /mnt/app/db/gluetun-nzb2:/gluetun
+      - /mnt/app/download:/download
     ports:
-      - 8086:8085 #sabnzbd
-      - 8003:8003 #control server
-    restart: unless-stopped
-    cap_add:
-      - NET_ADMIN
-
-  sabnzbd2:
-    image: lscr.io/linuxserver/sabnzbd:latest
-    container_name: sabnzbd2
-    environment:
-      - PUID=999
-      - PGID=999
-      - TZ=Some/Region
-    volumes:
-      - /mnt/app/db/sabnzbd2:/config
-      - /mnt/app/download/sabnzbd2:/downloads2
-    network_mode: "service:gluetun-nzb2"
-    depends_on:
-      - gluetun-nzb2
+      - 8085:8085
     restart: unless-stopped
 
   unpackerr:
@@ -392,7 +334,7 @@ services:
       - UN_LIDARR_0_API_KEY=keyy
       - UN_LIDARR_0_PROTOCOLS=torrent,usenet
     volumes:
-      - /mnt/app/download:/internal
+      - /mnt/app/download:/download
       - /mnt/app/db/unpackerr/logs:/logs
     restart: unless-stopped
 
@@ -414,8 +356,9 @@ services:
       - /mnt/app/db/tdarr/server:/app/server
       - /mnt/app/db/tdarr/configs:/app/configs
       - /mnt/app/db/tdarr/logs:/app/logs
-      - /mnt/transcode/tdarr:/temp
+      - /mnt/app/db/tdarr/transcode:/temp
       - /mnt/data/media:/media
+      - /mnt/data/user/Download:/download
     ports:
       - 8265:8265 # webUI port
       - 8266:8266 # server port
@@ -429,7 +372,7 @@ services:
   maintainerr:
     image: ghcr.io/jorenn92/maintainerr:latest
     container_name: maintainerr
-    user: 999:1000
+    user: 999:999
     volumes:
       - /mnt/app/db/maintainerr:/opt/data
       - /mnt/data/media:/media
@@ -455,11 +398,13 @@ services:
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
     container_name: homepage
+    environment:
+      - HOMEPAGE_ALLOWED_HOSTS=server.mylocal:3001
     ports:
       - 3001:3000
     volumes:
       - /mnt/app/db/homepage:/app/config
       - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
-      - /mnt/app/download:/internal:ro
+      - /mnt/app/download:/download:ro
       - /mnt/data/media:/data/media:ro
       - /mnt/transcode:/transcode:ro

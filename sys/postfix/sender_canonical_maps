@@ -1,0 +1,3 @@
+# Sender Canonical Maps - Rewrite all senders to authenticated user
+# This ensures OAuth2 authentication works by matching sender to authenticated user
+/.*/ postfix@yourdomain.com
