@@ -19,14 +19,14 @@ On to the software stack. I've divided the system into multiple compose projects
 
 Stack contents:
 -  [media](https://github.com/tikibozo/plexarr/blob/main/media/docker-compose.yml): This is the main arr stack, which includes
-    - [Radarr](https://radarr.video/) / [Sonarr](https://sonarr.tv/) / [Lidarr](https://lidarr.audio/) / [Arr Scripts](https://github.com/RandomNinjaAtk/arr-scripts) / [Huntarr](https://github.com/plexguide/Huntarr.io) - Media management
+    - [Radarr](https://radarr.video/) / [Sonarr](https://sonarr.tv/) / [Lidarr](https://lidarr.audio/) / [Arr Scripts](https://github.com/RandomNinjaAtk/arr-scripts) - Media management
     - [Bazarr](https://www.bazarr.media/) / [Subcleaner](https://github.com/KBlixt/subcleaner) / [Whisper](https://github.com/ahmetoner/whisper-asr-webservice) - Subtitles
     - [Recyclarr](https://github.com/recyclarr/recyclarr) / [TRaSH Guides](https://trash-guides.info/) - Release picking optimizations 
     - [Prowlarr](https://github.com/prowlarr/prowlarr) / [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) - Indexer management
     - [Gluetun](https://github.com/qdm12/gluetun) / [GSP-Qbittorrent-Gluetun-sync-port-mod](https://github.com/t-anc/GSP-Qbittorent-Gluetun-sync-port-mod) - VPN
     - [Tautulli](https://tautulli.com/) - Plex monitoring/notifications
     - [Kometa](https://kometa.wiki/en/latest/) - Dynamic collections/overlays
-    - [qBittorrent](https://www.qbittorrent.org/) / [SABnzbd](https://sabnzbd.org/) - Download
+    - [qBittorrent](https://www.qbittorrent.org/) / [Qui](https://github.com/autobrr/qui) / [SABnzbd](https://sabnzbd.org/) - Download
     - [Autobrr](https://autobrr.com/) / [TheLounge](https://thelounge.chat/) - IRC Announces
     - [Unpackerr](https://github.com/Unpackerr/unpackerr) - Archive extraction
     - [Tdarr](https://home.tdarr.io/) - Transcoding
