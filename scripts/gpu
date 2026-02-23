@@ -1,0 +1,3 @@
+#!/bin/bash
+sudo docker exec -i radarr /sbin/apk add intel-media-driver
+sudo docker exec -i sonarr /usr/bin/apt satisfy -y intel-media-va-driver-non-free

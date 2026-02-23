@@ -6,8 +6,8 @@ services:
       - PLEX_UID=999
       - PLEX_GID=999
       - TZ=Your/Region
-      - PLEX_CLAIM=codeee
-      - ADVERTISE_IP=http://plex.yourdomain.com/
+      - PLEX_CLAIM=claim-code
+      - ADVERTISE_IP=http://plex.yourdomain.com:32400/
     ports:
       - 32400:32400/tcp #main plex app
       - 8324:8324/tcp   #plex roku/plex companion control
@@ -25,58 +25,13 @@ services:
     privileged: true
     devices:
       - /dev/dri:/dev/dri
-        
-  overseerr:
-    image: lscr.io/linuxserver/overseerr:latest
-    container_name: overseerr
-    environment:
-      - PUID=999
-      - PGID=999
-      - TZ=Some/Region
-    volumes:
-     - /mnt/app/db/overseerr:/config
-    ports:
-     - 5055:5055
-    restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.overseerr.rule=Host(`overseerr.yourdomain.com`)"
-      - "traefik.http.routers.overseerr.entrypoints=websecure"
-      - "traefik.http.routers.overseerr.tls.certresolver=myresolver"
 
-  requestrr:
-    container_name: requestrr
-    image: thomst08/requestrr
-    ports:
-      - 4545:4545
-    volumes:
-      - /mnt/app/db/requestrr:/root/config
-    restart: unless-stopped
-
-  wizarr:
-    container_name: wizarr
-    image: ghcr.io/wizarrrr/wizarr:beta
-    environment:
-      - TZ=Some/Region
-      - APP_URL=https://join.yourdomain.com
-      - DISABLE_INBUILT_AUTH=false #Set to true ONLY if you are using another auth provider (Authelia, Authentik, etc)
-      - ALLOW_BUG_REPORTING=true #Helps me fix bugs, but you can disable it if you want! I use Sentry.io for this.
-    volumes:
-      - /mnt/app/db/wizarr:/data/database
-    ports:
-      - 5690:5690
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.wizarr.rule=Host(`join.yourdomain.com`)"
-      - "traefik.http.routers.wizarr.entrypoints=websecure"
-      - "traefik.http.routers.wizarr.tls.certresolver=myresolver"
-      
   traefik:
     image: traefik:latest
     container_name: "traefik"
     environment:
       - NAMECHEAP_API_USER=user
-      - NAMECHEAP_API_KEY=keyyy
+      - NAMECHEAP_API_KEY=keyy
       - NAMECHEAP_TTL=1
     restart: unless-stopped
     command:
@@ -100,3 +55,49 @@ services:
     volumes:
       - /mnt/app/db/traefik/letsencrypt:/letsencrypt
       - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  overseerr:
+    image: lscr.io/linuxserver/overseerr:latest
+    container_name: overseerr
+    environment:
+      - PUID=999
+      - PGID=999
+      - TZ=Some/Region
+    volumes:
+     - /mnt/app/db/overseerr:/config
+    ports:
+     - 5055:5055
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.overseerr.rule=Host(`requests.yourdomain.com`) || Host(`overseerr.yourdomain.com`)"
+      - "traefik.http.routers.overseerr.entrypoints=websecure"
+      - "traefik.http.routers.overseerr.tls.certresolver=myresolver"
+
+  requestrr:
+    container_name: requestrr
+    image: thomst08/requestrr
+    ports:
+      - 4545:4545
+    volumes:
+      - /mnt/app/db/requestrr:/root/config
+    restart: unless-stopped
+
+  wizarr:
+    container_name: wizarr
+    image: ghcr.io/wizarrrr/wizarr:latest
+    environment:
+      - TZ=Some/Region
+      - DISABLE_INBUILT_AUTH=false #Set to true ONLY if you are using another auth provider (Authelia, Authentik, etc)
+      - ALLOW_BUG_REPORTING=true #Helps me fix bugs, but you can disable it if you want! I use Sentry.io for this.
+      - PUID=999
+      - PGID=999
+    volumes:
+      - /mnt/app/db/wizarr:/data/database
+    ports:
+      - 5690:5690
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wizarr.rule=Host(`join.yourdomain.com`)"
+      - "traefik.http.routers.wizarr.entrypoints=websecure"
+      - "traefik.http.routers.wizarr.tls.certresolver=myresolver"

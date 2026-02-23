@@ -7,7 +7,7 @@ services:
       - "10051:10051"
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /etc/timezone:/etc/timezone:ro 
+      - /etc/timezone:/etc/timezone:ro
       - /data/opt/zabbix/usr/lib/zabbix/alertscripts:/usr/lib/zabbix/alertscripts:ro
       - /data/opt/zabbix/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts:ro
       - /data/opt/zabbix/var/lib/zabbix/export:/var/lib/zabbix/export:rw
@@ -118,17 +118,20 @@ services:
 
   zabbix-agent:
     container_name: zabbix-agent
-    image: zabbix/zabbix-agent2:ubuntu-6.2-latest
+    image: zabbix/zabbix-agent2:ubuntu-latest
     environment:
       - ZBX_HOSTNAME=server
       - ZBX_SERVER_HOST=server
       - ZBX_DEBUGLEVEL=2
-      - ZBX_ENABLEPERSISTENTBUFFER=true
+      - ZBX_ALLOWKEY=system.run[*]
     ports:
       - 10052:10050/tcp
     volumes:
       - /data/opt/zabbixagent:/var/lib/zabbix/buffer
+      - ./agentscripts:/agentscripts:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/log:/var/log:ro
+      - ./agent-config/user_parameters.conf:/etc/zabbix/zabbix_agent2.d/user_parameters.conf:ro
     restart: unless-stopped
     privileged: true
     user: 0:0
@@ -154,12 +157,25 @@ services:
       - SETPCAP
     command: rcd -v --rc-web-gui --rc-web-gui-no-open-browser --rc-addr :5572 --rc-user rclone --rc-pass rclone --transfers=3 --copy-links
 
+  postfix:
+    container_name: postfix
+    image: boky/postfix:latest
+    ports:
+      - 2525:25/tcp
+    env_file:
+      - ./postfix/postfix.env
+    volumes:
+      - /opt/postfix/queue:/var/spool/postfix
+      - ./postfix/sender_canonical_maps:/etc/postfix/sender_canonical_maps:ro
+      - /opt/postfix/xoauth2-tokens:/var/spool/postfix/xoauth2-tokens
+    restart: unless-stopped
+
 secrets:
-    MYSQL_USER:
-      file: ./env_vars/.MYSQL_USER
-    MYSQL_PASSWORD:
-      file: ./env_vars/.MYSQL_PASSWORD
-    MYSQL_ROOT_USER:
-      file: ./env_vars/.MYSQL_ROOT_USER
-    MYSQL_ROOT_PASSWORD:
-      file: ./env_vars/.MYSQL_ROOT_PASSWORD
+      MYSQL_USER:
+        file: ./env_vars/.MYSQL_USER
+      MYSQL_PASSWORD:
+        file: ./env_vars/.MYSQL_PASSWORD
+      MYSQL_ROOT_USER:
+        file: ./env_vars/.MYSQL_ROOT_USER
+      MYSQL_ROOT_PASSWORD:
+        file: ./env_vars/.MYSQL_ROOT_PASSWORD

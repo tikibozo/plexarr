@@ -5,10 +5,12 @@
 - resources:
     cpu: true
     memory: true
-    disk: /internal
+    disk: /download
 #   expanded: true
 - resources:
     disk: /data/media
+- resources:
+    disk: /transcode
 
 #- search:
 #    provider: duckduckgo
