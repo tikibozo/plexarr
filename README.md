@@ -33,7 +33,7 @@ Stack contents:
     - [Organizr](https://github.com/causefx/Organizr) + [Homepage](https://github.com/benphelps/homepage) - Dashboard
 - [nas](https://github.com/tikibozo/plexarr/blob/main/nas/docker-compose.yml): User facing services
     - [Plex](https://plex.tv) - Media server
-    - [Overseerr](https://overseerr.dev/) - Web requests/notifications
+    - [Seerr](https://seerr.dev/) - Web requests/notifications
     - [Requestrr](https://github.com/thomst08/requestrr) - Discord requests
     - [Wizarr](https://github.com/Wizarrrr/wizarr) - New user signup
     - [Traefik](https://github.com/traefik/traefik)  - Reverse proxy
