@@ -1,0 +1,96 @@
+###########################
+#        Templates        #
+###########################
+templates:
+  Decade:
+    smart_filter:
+      any:
+        decade: <<decade>>
+      sort_by: year.desc
+    sync_mode: append
+
+###########################
+#       Collections       #
+###########################
+collections:
+  # Separator for Film Movements & Eras
+  Film Movements & Eras:
+    sort_title: +_06_01 Film Movements
+    blank_collection: true
+    collection_mode: hide
+    visible_home: true
+    visible_shared: true
+
+  # Specific Decades
+  "1960s Cinema":
+    template: {name: Decade, decade: 1960}
+    sort_title: +_06_02 1960s Cinema
+    summary: "Films from the revolutionary decade of the 1960s, featuring the rise of New Hollywood, French New Wave, and other influential movements."
+
+  "1970s Cinema":
+    template: {name: Decade, decade: 1970}
+    sort_title: +_06_03 1970s Cinema
+    summary: "The cinema of the 1970s, often considered one of the greatest decades in film history with the height of New Hollywood, international art films, and genre-defining works."
+
+  # Film Movements
+  "French New Wave":
+    smart_filter:
+      all:
+        country: France
+        year.gte: 1958
+        year.lte: 1973
+      sort_by: year.asc
+    sort_title: +_06_04 French New Wave
+    summary: "Films from the influential French New Wave movement of the late 1950s and 1960s, which revolutionized cinema with its fresh approach to storytelling, editing, and visual style."
+    sync_mode: append
+
+  "Golden Age Hollywood":
+    smart_filter:
+      all:
+        year.gte: 1930
+        year.lte: 1949
+      sort_by: year.asc
+    sort_title: +_06_05 Golden Age Hollywood
+    summary: "Classic films from Hollywood's Golden Age spanning the 1930s and 1940s, featuring iconic stars and the studio system at its height."
+    sync_mode: append
+
+  "Golden Age of Japanese Cinema":
+    smart_filter:
+      all:
+        country: Japan
+        year.gte: 1950
+        year.lte: 1970
+      sort_by: year.asc
+    sort_title: +_06_06 Japanese Golden Age
+    summary: "The Golden Age of Japanese Cinema spanning from the post-war period through the 1960s, featuring masterpieces from directors like Kurosawa, Ozu, Mizoguchi, and Honda."
+    sync_mode: append
+
+  "Italian Neorealism":
+    smart_filter:
+      all:
+        country: Italy
+        year.gte: 1943
+        year.lte: 1955
+      sort_by: year.asc
+    sort_title: +_06_07 Italian Neorealism
+    summary: "Italian films from the post-WWII era characterized by stories about poor and working-class people, filmed on location with non-professional actors."
+    sync_mode: append
+
+  "New Hollywood":
+    smart_filter:
+      all:
+        year.gte: 1967
+        year.lte: 1980
+      sort_by: year.asc
+    sort_title: +_06_08 New Hollywood
+    summary: "The New Hollywood era that revolutionized American cinema with films that challenged conventions, featuring maverick directors like Coppola, Scorsese, and Altman."
+    sync_mode: append
+
+  "Silent Film Era":
+    smart_filter:
+      all:
+        year.lte: 1929
+      sort_by: year.asc
+    sort_title: +_06_09 Silent Film Era
+    summary: "Films from the silent era, showcasing the foundational works of cinema before the introduction of synchronized sound."
+    sync_mode: append

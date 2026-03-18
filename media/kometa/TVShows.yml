@@ -47,7 +47,7 @@ collections:
 
   Star Trek:
     template: {name: Regular}
-    imdb_list: https://www.imdb.com/list/ls564613526
+    imdb_list: https://www.imdb.com/list/ls563970101
     url_poster: https://theposterdb.com/api/assets/62233
     collection_order: release.desc
 
@@ -56,5 +56,13 @@ collections:
     tmdb_list:
       - https://www.themoviedb.org/list/7091278
       - https://www.themoviedb.org/list/8173369
+    imdb_list:
+      - https://www.imdb.com/list/ls024519932
     url_poster: https://theposterdb.com/api/assets/39137
     collection_order: release.desc
+
+  Stargate:
+    template: {name: Regular}
+    imdb_list: https://www.imdb.com/list/ls020207146
+    url_poster: https://image.tmdb.org/t/p/w500/dxlCi4530gCAah2QlW6nIGUH66d.jpg
+    collection_order: release.asc

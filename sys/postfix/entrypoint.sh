@@ -52,6 +52,8 @@ postconf -e "smtp_sasl_password_maps = lmdb:/etc/postfix/sasl_passwd"
 postconf -e "smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt"
 postconf -e "smtpd_tls_cert_file=/etc/ssl/certs/smtp.yourdomain.com.pem"
 postconf -e "smtpd_tls_key_file=/etc/ssl/private/smtp.yourdomain.com.key"
+postconf -e "sender_canonical_classes=envelope_sender,header_sender"
+postconf -e "sender_canonical_maps=regexp:/etc/postfix/sender_canonical_maps"
 
 # Create password file
 # Alpine 3.13 dropped support for Berkeley DB, so using lmdb instead

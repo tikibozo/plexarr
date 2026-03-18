@@ -1,0 +1,89 @@
+services:
+  readmeabook:
+    image: ghcr.io/kikootwo/readmeabook:latest
+    container_name: readmeabook
+    restart: unless-stopped
+    ports:
+      - "3030:3030"
+    volumes:
+      # Application config and cache
+      - /mnt/app/db/readmeabook/config:/app/config
+      - /mnt/app/db/readmeabook/cache:/app/cache
+
+      # Downloads and media directories
+      - /mnt/app/download:/download
+
+      - /mnt/data/media/audiobooks:/media
+
+      # PostgreSQL data persistence
+      - /mnt/app/db/readmeabook/pgdata:/var/lib/postgresql/data
+
+      # Redis data persistence
+      - /mnt/app/db/readmeabook/redis:/var/lib/redis
+
+    environment:
+      PUID: 999
+      PGID: 999
+      PUBLIC_URL: "https://abook.yourdomain.com"
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.readmeabook.rule=Host(`abook.yourdomain.com`)"
+      - "traefik.http.routers.readmeabook.entrypoints=websecure"
+      - "traefik.http.routers.readmeabook.tls.certresolver=myresolver"
+      - "traefik.http.services.readmeabook.loadbalancer.server.port=3030"
+      - "traefik.docker.network=nas_default"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3030/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    networks:
+      - default
+      - nas_default
+
+  audiobookshelf:
+    image: ghcr.io/advplyr/audiobookshelf:latest
+    container_name: audiobookshelf
+    ports:
+      - 13378:80
+    volumes:
+      - /mnt/data/media/audiobooks:/audiobooks
+      - /mnt/data/media/podcasts:/podcasts
+      - /mnt/app/db/audiobookshelf/config:/config
+      - /mnt/app/db/audiobookshelf/metadata:/metadata
+    environment:
+      - TZ=Some/Region
+
+  abs-tract:
+    image: arranhs/abs-tract:latest
+    container_name: abs-tract
+    restart: unless-stopped
+
+  plex-oidc-bridge:
+    image: ghcr.io/blacktirion/plex-oidc-bridge:latest
+    container_name: plex-oidc-bridge
+    restart: unless-stopped
+    volumes:
+      - /mnt/app/db/plex-oidc-bridge:/app/config
+    environment:
+      - PUBLIC_URL=https://auth.yourdomain.com
+      - ALLOWED_REDIRECT_URIS=https://abook.yourdomain.com/api/auth/oidc/callback
+      - TRUST_PROXY_HEADERS=true
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.plex-oidc-bridge.rule=Host(`auth.yourdomain.com`)"
+      - "traefik.http.routers.plex-oidc-bridge.entrypoints=websecure"
+      - "traefik.http.routers.plex-oidc-bridge.tls.certresolver=myresolver"
+      - "traefik.http.services.plex-oidc-bridge.loadbalancer.server.port=8080"
+      - "traefik.docker.network=nas_default"
+    networks:
+      - default
+      - nas_default
+
+networks:
+  nas_default:
+    external: true

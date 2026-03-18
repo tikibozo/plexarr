@@ -8,8 +8,6 @@ services:
       - ./postfix/postfix.env
     volumes:
       - /mnt/app/db/postfix/queue:/var/spool/postfix
-      - /mnt/app/db/postfix/certs/smtp.yourdomain.com.pem:/etc/ssl/certs/smtp.yourdomain.com.pem:ro
-      - /mnt/app/db/postfix/certs/smtp.yourdomain.com.key:/etc/ssl/private/smtp.yourdomain.com.key:ro
       - ./postfix/sender_canonical_maps:/etc/postfix/sender_canonical_maps:ro
     restart: unless-stopped
 
@@ -37,10 +35,44 @@ services:
       - /dev/fuse:/dev/fuse
       - /mnt/data:/data
       - /mnt/app:/opt
-      - /mnt/app/home/user/compose/sys/rclone/rclone-daily.sh:/rclone-daily.sh
       - /tmp/rclone:/htmp
     restart: unless-stopped
     cap_add:
       - SYS_ADMIN
       - SETPCAP
     command: rcd -v --rc-web-gui --rc-web-gui-no-open-browser --rc-addr :5572 --rc-user rclone --rc-pass rclone --transfers=3 --copy-links
+
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    container_name: crowdsec
+    environment:
+      - COLLECTIONS=crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/linux
+      - PGID=999
+    volumes:
+      - /mnt/app/db/crowdsec/config:/etc/crowdsec
+      - /mnt/app/db/crowdsec/data:/var/lib/crowdsec/data
+      - /mnt/app/db/traefik/logs:/var/log/traefik:ro
+      - ./crowdsec/acquis.yaml:/etc/crowdsec/acquis.d/traefik.yaml:ro
+    ports:
+      - "1.1.1.1:8180:8080"
+    restart: unless-stopped
+    networks:
+      - default
+      - nas_default
+
+  crowdsec-firewall-bouncer:
+    image: ghcr.io/shgew/cs-firewall-bouncer-docker:latest
+    container_name: crowdsec-firewall-bouncer
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ./crowdsec/crowdsec-firewall-bouncer.yaml:/config/crowdsec-firewall-bouncer.yaml:ro
+    restart: unless-stopped
+    depends_on:
+      - crowdsec
+
+networks:
+  nas_default:
+    external: true

@@ -1,0 +1,37 @@
+###########################
+#        Templates        #
+###########################
+templates:
+  Award:
+    sort_title: +_02_<<sort>>
+    collection_order: release.desc
+    sync_mode: append
+
+###########################
+#       Collections       #
+###########################
+collections:
+  # Separator for Award Collections
+  Award Winners & Nominees:
+    sort_title: +_02_01 Award Winners & Nominees
+    blank_collection: true
+    collection_mode: hide
+    visible_home: true
+    visible_shared: true
+
+  # Academy Awards
+  "Oscar Best Picture Winners":
+    template: {name: Award, sort: 02 Oscar Winners}
+    summary: "Films that won the Academy Award for Best Picture, representing some of the most acclaimed works in cinema history."
+    collection_order: release.desc
+    imdb_list:
+      - https://www.imdb.com/list/ls524226422/
+
+  # Keep existing Oscar nominees collection from Movies.yml
+  "Oscar Nominees":
+    template: {name: Award, sort: 03 Oscar Nominees}
+    sync_mode: append
+    summary: "Best Picture, Director, Actor/Actress, Supporting Actor/Actress, Animated, Shorts, International, etc. Nominees (As available)"
+    collection_order: release.desc
+    imdb_list:
+      - https://www.imdb.com/list/ls562954296/

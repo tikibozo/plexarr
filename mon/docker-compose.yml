@@ -1,7 +1,7 @@
 services:
   zabbix-server:
     container_name: zabbix-server
-    image: zabbix/zabbix-server-mysql:alpine-latest
+    image: zabbix/zabbix-server-mysql:ubuntu-latest
     restart: unless-stopped
     ports:
       - "10051:10051"
@@ -15,6 +15,7 @@ services:
       - /data/opt/zabbix/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
       - /data/opt/zabbix/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys:ro
       - /data/opt/zabbix/var/lib/zabbix/mibs:/var/lib/zabbix/mibs:ro
+      - ./server-config/zabbix_server_db_tls.conf:/etc/zabbix/zabbix_server_db_tls.conf:ro
     ulimits:
       nproc: 65535
       nofile:
@@ -40,7 +41,7 @@ services:
       com.zabbix.company: "Zabbix LLC"
       com.zabbix.component: "zabbix-server"
       com.zabbix.dbtype: "mysql"
-      com.zabbix.os: "alpine"
+      com.zabbix.os: "ubuntu"
 
   zabbix-web-nginx-mysql:
     container_name: zabbix-web-nginx-mysql
@@ -100,6 +101,7 @@ services:
       - --default-authentication-plugin=mysql_native_password
       - --log_bin_trust_function_creators=1
       - --skip-log-bin
+      - --innodb-redo-log-capacity=536870912
     volumes:
        - /data/opt/zabbix/var/lib/mysql:/var/lib/mysql:rw
     env_file:
@@ -120,8 +122,8 @@ services:
     container_name: zabbix-agent
     image: zabbix/zabbix-agent2:ubuntu-latest
     environment:
-      - ZBX_HOSTNAME=server
-      - ZBX_SERVER_HOST=server
+      - ZBX_HOSTNAME=monitoringserver
+      - ZBX_SERVER_HOST=monitoringserver
       - ZBX_DEBUGLEVEL=2
       - ZBX_ALLOWKEY=system.run[*]
     ports:
@@ -131,6 +133,7 @@ services:
       - ./agentscripts:/agentscripts:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/log:/var/log:ro
+      - /data/backups:/data/backups:ro
       - ./agent-config/user_parameters.conf:/etc/zabbix/zabbix_agent2.d/user_parameters.conf:ro
     restart: unless-stopped
     privileged: true

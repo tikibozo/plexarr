@@ -9,5 +9,5 @@
 # my-docker:
 #   socket: /var/run/docker.sock
 
-yourserver-docker:
+server-docker:
     socket: /var/run/docker.sock

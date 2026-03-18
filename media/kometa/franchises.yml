@@ -1,0 +1,129 @@
+###########################
+#        Templates        #
+###########################
+templates:
+  Franchise:
+    sort_title: +_01_<<sort>>
+    collection_order: release.desc
+    sync_mode: append
+    collection_mode: default
+
+  Movie:
+    tmdb_collection: <<collection>>
+    tmdb_summary: <<summary>>
+    sort_title: +_01_<<sort>>
+    collection_order: release.desc
+    sync_mode: append
+    collection_mode: default
+
+###########################
+#       Collections       #
+###########################
+collections:
+  # Separator for Franchise Collections
+  Famous Franchises:
+    sort_title: +_01_01 Famous Franchises
+    blank_collection: true
+    collection_mode: hide
+    visible_home: true
+    visible_shared: true
+
+  # Alphabetically ordered franchises
+  "Bourne":
+    template: {name: Movie, collection: 31562, summary: 31562, sort: 02 Bourne}
+    summary: "The action thriller series following Jason Bourne, a former CIA assassin suffering from amnesia as he attempts to discover his true identity while evading government pursuit."
+    collection_order: release.asc
+
+  "DC Extended Universe":
+    template: {name: Franchise, sort: 03 DC}
+    imdb_list: https://www.imdb.com/list/ls027494248
+    summary: "A collection of all the DC universe movies, featuring iconic superheroes like Superman, Batman, and Wonder Woman."
+
+  "Disney":
+    sort_title: +_01_04 Disney
+    plex_search:
+      any:
+        studio:
+          - Disney
+          - Pixar
+    summary: "Films from Walt Disney Studios and Pixar Animation Studios, including animated classics, live-action features, and Pixar's beloved stories."
+    collection_order: release.desc
+    sync_mode: append
+    collection_mode: default
+    url_poster: https://theposterdb.com/api/assets/11782
+
+  "Godzilla!":
+    template: {name: Franchise, sort: 05 Godzilla}
+    imdb_list:
+      - https://www.imdb.com/list/ls002185173/
+      - https://www.imdb.com/list/ls064848981/
+    summary: "The long-running Japanese monster (kaiju) film series featuring Godzilla, from the original 1954 classic through numerous Japanese productions and American remakes."
+
+  "Harry Potter":
+    template: {name: Movie, collection: 1241, summary: 1241, sort: 06 Harry Potter}
+    summary: "The magical fantasy series based on J.K. Rowling's novels, following the young wizard Harry Potter during his years at Hogwarts School of Witchcraft and Wizardry."
+    collection_order: release.asc
+
+  "Indiana Jones":
+    template: {name: Movie, collection: 84, summary: 84, sort: 07 Indiana Jones}
+    summary: "The archeological adventure series created by George Lucas and Steven Spielberg, following the globe-trotting exploits of Dr. Indiana Jones as he races against time and villains to recover ancient artifacts."
+    collection_order: release.asc
+
+  "James Bond":
+    template: {name: Movie, collection: 645, summary: 645, sort: 08 James Bond}
+    summary: "The long-running spy film series following the adventures of British Secret Service agent James Bond, code-named 007, as he battles various villains and threats to global security."
+
+  "Jurassic Park":
+    template: {name: Movie, collection: 328, summary: 328, sort: 09 Jurassic Park}
+    summary: "The dinosaur theme park franchise that began with Steven Spielberg's groundbreaking 1993 film, exploring the consequences of bringing extinct creatures back to life through genetic engineering."
+
+  "The Lord of the Rings":
+    template: {name: Franchise, sort: 10 Lord of the Rings}
+    imdb_list: https://www.imdb.com/list/ls055713151/
+    summary: "Peter Jackson's epic fantasy trilogy based on J.R.R. Tolkien's novels, following Frodo Baggins and the Fellowship on their quest to destroy the One Ring and defeat the dark lord Sauron."
+    collection_order: release.asc
+
+  "Marvel Cinematic Universe":
+    template: {name: Franchise, sort: 11 Marvel}
+    imdb_list: https://www.imdb.com/list/ls000024621/
+    summary: "A collection of all Marvel Cinematic Universe (MCU) movies, following the interconnected stories of superheroes including Iron Man, Captain America, Thor, and the Avengers."
+
+  "Mission Impossible":
+    template: {name: Movie, collection: 87359, summary: 87359, sort: 12 Mission Impossible}
+    summary: "The action spy series starring Tom Cruise as IMF agent Ethan Hunt, known for its elaborate stunts, complex plots, and team-based espionage operations."
+
+  "Pirates of the Caribbean":
+    template: {name: Movie, collection: 295, summary: 295, sort: 13 Pirates}
+    summary: "The swashbuckling adventure series featuring Captain Jack Sparrow and an ensemble cast navigating supernatural threats on the high seas."
+    collection_order: release.asc
+
+  "Stargate":
+    template: {name: Franchise, sort: 14 Stargate}
+    imdb_list: https://www.imdb.com/list/ls020207146
+    summary: "A military science fiction franchise based on the idea of an alien wormhole device that enables nearly instantaneous travel across the cosmos, spanning films, TV series, and other media."
+    url_poster: https://image.tmdb.org/t/p/w500/dxlCi4530gCAah2QlW6nIGUH66d.jpg
+    collection_order: release.asc
+
+  "Star Trek":
+    template: {name: Franchise, sort: 15 Star Trek}
+    imdb_list: https://www.imdb.com/list/ls084767125
+    summary: "The complete Star Trek film franchise, chronicling the voyages of the starship Enterprise and its crew across multiple generations of characters and storylines."
+
+  "Star Wars":
+    template: {name: Franchise, sort: 16 Star Wars}
+    imdb_list:
+      - https://www.imdb.com/list/ls084761910
+      - https://www.imdb.com/list/ls024519932
+    summary: "The epic space opera franchise created by George Lucas, spanning multiple trilogies and standalone films that chronicle the struggle between the light and dark sides of the Force."
+
+  "Studio Ghibli":
+    template: {name: Franchise, sort: 17 Studio Ghibli}
+    summary: "The collected works of Studio Ghibli, the acclaimed Japanese animation studio founded by directors Hayao Miyazaki and Isao Takahata, known for films like 'Spirited Away', 'My Neighbor Totoro', and 'Princess Mononoke'."
+    imdb_list:
+      - https://www.imdb.com/list/ls076439519/
+      - https://www.imdb.com/list/ls068907948/
+      - https://www.imdb.com/list/ls012571053/
+
+  "X-Men":
+    template: {name: Movie, collection: 748, summary: 748, sort: 18 X-Men}
+    summary: "The superhero film series based on Marvel Comics' X-Men characters, featuring mutants with various superhuman abilities fighting for peace and equality in a world that fears and hates them."

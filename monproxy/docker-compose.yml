@@ -8,7 +8,7 @@ networks:
 services:
   zabbix-proxy:
     container_name: zabbix-proxy
-    image: zabbix/zabbix-proxy-mysql:alpine-latest
+    image: zabbix/zabbix-proxy-mysql:ubuntu-latest
     restart: unless-stopped
     ports:
       - 10052:10051
@@ -35,6 +35,7 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
+      - ./proxy-config/zabbix_proxy_db_tls.conf:/etc/zabbix/zabbix_proxy_db_tls.conf:ro
 
   mysql-server:
     container_name: mysql-server
@@ -92,6 +93,10 @@ services:
       - /mnt/app/home/user/compose/mon/agentscripts:/agentscripts:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/log:/var/log:ro
+      - /mnt:/hostfs/mnt:ro
+      - /mnt/app:/hostfs/mnt/app:ro
+      - /mnt/data:/hostfs/mnt/data:ro
+      - /mnt/transcode:/hostfs/mnt/transcode:ro
     restart: unless-stopped
     privileged: true
     group_add:

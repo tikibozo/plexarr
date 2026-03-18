@@ -1,0 +1,61 @@
+###########################
+#       Separators        #
+###########################
+collections:
+  # Each separator should precede its related collections
+
+  # Franchise Collections Separator
+  Famous Franchises:
+    sort_title: +_01_01 Franchise Collections
+    blank_collection: true
+    collection_mode: hide
+    visible_home: true
+    visible_shared: true
+
+  # Award Collections Separator
+  Award Winners & Nominees:
+    sort_title: +_02_01 Award Winners & Nominees
+    blank_collection: true
+    collection_mode: hide
+    visible_home: true
+    visible_shared: true
+
+  # Curated Collections Separator
+  Curated Collections:
+    sort_title: +_03_01 Curated Collections
+    blank_collection: true
+    collection_mode: hide
+    visible_home: true
+    visible_shared: true
+
+  # Director Collections Separator
+  Director Collections:
+    sort_title: +_04_01 Director Collections
+    blank_collection: true
+    collection_mode: hide
+    visible_home: true
+    visible_shared: true
+
+  # Actor Collections Separator
+  Actor Collections:
+    sort_title: +_05_01 Actor Collections
+    blank_collection: true
+    collection_mode: hide
+    visible_home: true
+    visible_shared: true
+
+  # Film Movement Collections Separator
+  Film Movements & Eras:
+    sort_title: +_06_01 Film Movements
+    blank_collection: true
+    collection_mode: hide
+    visible_home: true
+    visible_shared: true
+
+  # Thematic Collections Separator
+  Thematic Collections:
+    sort_title: +_07_01 Thematic Collections
+    blank_collection: true
+    collection_mode: hide
+    visible_home: true
+    visible_shared: true

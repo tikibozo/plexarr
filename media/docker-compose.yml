@@ -11,8 +11,6 @@ services:
     environment:
       - VPN_SERVICE_PROVIDER=private internet access
       - SERVER_REGIONS=SOME_REGION
-      - SHADOWSOCKS=on
-      - HTTPPROXY=on
       - OPENVPN_USER=user
       - OPENVPN_PASSWORD=pass
       - FIREWALL_OUTBOUND_SUBNETS=1.1.1.1/1
@@ -54,6 +52,7 @@ services:
       - /mnt/app/db/sonarr/custom-services.d:/custom-services.d
       - /mnt/data:/data
       - /mnt/app/download:/download
+
     ports:
       - 8989:8989
     restart: unless-stopped
@@ -68,6 +67,7 @@ services:
       - /mnt/app/db/sonarr4k/config:/config
       - /mnt/data:/data
       - /mnt/app/download:/download
+
     ports:
       - 9090:9090
     restart: unless-stopped
@@ -84,6 +84,7 @@ services:
       - /mnt/app/db/radarr/custom-services.d:/custom-services.d
       - /mnt/data:/data
       - /mnt/app/download:/download
+
     ports:
       - 7878:7878
     restart: unless-stopped
@@ -98,6 +99,7 @@ services:
       - /mnt/app/db/radarr4k/config:/config
       - /mnt/data:/data
       - /mnt/app/download:/download
+
     ports:
       - 7979:7979
     restart: unless-stopped
@@ -115,6 +117,7 @@ services:
       - /mnt/app/db/lidarr/custom-cont-init.d:/custom-cont-init.d
       - /mnt/data:/data
       - /mnt/app/download:/download
+
       - /mnt/data/media/music-videos:/music-videos
       - /mnt/data/media/music-lidarr-extended:/downloads-lidarr-extended
     ports:
@@ -223,17 +226,6 @@ services:
     volumes:
       - /mnt/app/db/recyclarr:/config
 
-  huntarr:
-    image: huntarr/huntarr:latest
-    container_name: huntarr
-    environment:
-      - TZ=Some/Region
-    volumes:
-      - /mnt/app/db/huntarr:/config
-    ports:
-      - 9705:9705
-    restart: unless-stopped
-
   flaresolverr:
     # DockerHub mirror flaresolverr/flaresolverr:latest
     image: ghcr.io/flaresolverr/flaresolverr:latest
@@ -254,15 +246,18 @@ services:
     image: qmcgaw/gluetun:latest
     container_name: gluetun-qbt
     environment:
+      - PORT_FORWARD_ONLY=on
       - VPN_PORT_FORWARDING=on
       - VPN_SERVICE_PROVIDER=private internet access
       - SERVER_REGIONS=SOME_REGION
-      - SHADOWSOCKS=on
-      - HTTPPROXY=on
       - OPENVPN_USER=user
       - OPENVPN_PASSWORD=pass
       - FIREWALL_OUTBOUND_SUBNETS=1.1.1.1/1
       - HTTP_CONTROL_SERVER_ADDRESS=:8005
+      - HEALTH_VPN_DURATION_INITIAL=999h
+      - HEALTH_SUCCESS_WAIT_DURATION=30s
+      - DOT=off
+      - BLOCK_MALICIOUS=off
     volumes:
       - /mnt/app/db/gluetun-qbt:/gluetun
     devices:
@@ -294,6 +289,17 @@ services:
     network_mode: "service:gluetun-qbt"
     depends_on:
       - gluetun-qbt
+    restart: unless-stopped
+
+  qui:
+    image: ghcr.io/autobrr/qui:latest
+    container_name: qui
+    volumes:
+      - /mnt/app/db/qui:/config
+    ports:
+      - 7476:7476
+    depends_on:
+      - qbittorrent
     restart: unless-stopped
 
   sabnzbd:
@@ -335,12 +341,12 @@ services:
       - UN_LIDARR_0_PROTOCOLS=torrent,usenet
     volumes:
       - /mnt/app/download:/download
+
       - /mnt/app/db/unpackerr/logs:/logs
     restart: unless-stopped
 
   tdarr:
     container_name: tdarr
-   #image: ghcr.io/haveagitgat/tdarr:2.00.20.1
     image: ghcr.io/haveagitgat/tdarr:latest
     environment:
       - PUID=999

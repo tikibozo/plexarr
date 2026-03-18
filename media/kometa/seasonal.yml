@@ -71,7 +71,7 @@
 #############################################################
 
 external_templates:
-  git: KOMETA/templates
+  git: PMM/templates
 
 templates:
   Holiday:
@@ -87,10 +87,13 @@ templates:
     delete_not_scheduled: true
 
 collections:
+  # Separator for Seasonal Collections
 #  Seasonal Collections:
-#    template:
-#    - name: separator
-#      separator: seasonal
+#    sort_title: +_08_01 Seasonal Collections
+#    blank_collection: true
+#    collection_mode: hide
+#    visible_home: true
+#    visible_shared: true
 
 #  Independence Day:
 #    variables:
@@ -103,7 +106,7 @@ collections:
 #        visible_shared_<<key>>: true
 #        image: seasonal/<<key>>
 #      - name: arr
-#    imdb_list: 
+#    imdb_list:
 #      - https://www.imdb.com/list/ls068664510/
 #      - https://www.imdb.com/list/ls080925875/
 
@@ -118,7 +121,7 @@ collections:
 #        visible_shared_<<key>>: true
 #        image: seasonal/<<key>>
 #      - name: arr
-#    imdb_list: 
+#    imdb_list:
 #      - https://www.imdb.com/list/ls062665509/
 #      - https://www.imdb.com/list/ls051733651/
 
@@ -162,7 +165,7 @@ collections:
 #        visible_shared_<<key>>: true
 #        image: seasonal/<<key>>
 #      - name: arr
-#    imdb_list: 
+#    imdb_list:
 #      - https://www.imdb.com/list/ls000835734/
 #      - https://www.imdb.com/list/ls091597850/
 
@@ -195,11 +198,13 @@ collections:
       - name: Holiday
         schedule_christmas: range(12/01-12/31)
       - name: shared
-        visible_home_<<key>>: range(12/01-12/31) 
+        visible_home_<<key>>: range(12/01-12/31)
         visible_shared_<<key>>: range(12/01-12/31)
         image: seasonal/<<key>>
       - name: arr
-    imdb_list: https://www.imdb.com/list/ls054494666/
+    imdb_list:
+      - https://www.imdb.com/list/ls054494666/
+      - https://www.imdb.com/list/ls590679687/
 
 #  New Year's Day:
 #    variables:

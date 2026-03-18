@@ -1,0 +1,99 @@
+# Tracearr - PostgreSQL 18 Deployment (Experimental)
+#
+# WARNING: NEW INSTALLATIONS ONLY
+# Do NOT use with existing data volumes. PostgreSQL 18 data format is
+# incompatible with PostgreSQL 15/16. Delete or rename old volumes first.
+#
+# Uses PostgreSQL 18 with TimescaleDB HA image (includes Toolkit extension).
+#
+# REQUIREMENTS:
+#   - ~1GB RAM for Tracearr container
+#   - Secrets must be generated manually (see below)
+#
+# DEPLOY:
+#   # 1. Generate secrets
+#   echo "JWT_SECRET=$(openssl rand -hex 32)" > .env
+#   echo "COOKIE_SECRET=$(openssl rand -hex 32)" >> .env
+#
+#   # 2. Start
+#   docker compose -f docker-compose.pg18.yml up -d
+#
+# OPTIONAL ENVIRONMENT VARIABLES:
+#   PORT=3000              # External port mapping
+#   TZ=America/New_York    # Timezone
+#   DB_PASSWORD=tracearr   # Database password
+#   LOG_LEVEL=info         # Log level (debug, info, warn, error)
+
+services:
+  tracearr:
+    image: ghcr.io/connorgallopo/tracearr:latest
+    container_name: tracearr
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - TZ=Some/Region
+      - DATABASE_URL=postgres://tracearr:${DB_PASSWORD:-tracearr}@timescale:5432/tracearr
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - COOKIE_SECRET=${COOKIE_SECRET}
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      timescale:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - tracearr-network
+
+  timescale:
+    # TimescaleDB HA with PostgreSQL 18 and Toolkit
+    # PostgreSQL 18 features: AIO for 3x I/O performance, UUIDv7, temporal constraints
+    # Note: ~1.5GB image size (includes Patroni, backup tools, many extensions)
+    image: timescale/timescaledb-ha:pg18.1-ts2.25.0
+    container_name: tracearr-db
+    shm_size: 512mb  # Required for PostgreSQL shared memory (increase for large imports)
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536  # TimescaleDB chunks require many file descriptors
+    # Allow unlimited tuple decompression for migrations on compressed hypertables
+    # Increase lock table size for large imports (Tautulli imports with many TimescaleDB chunks)
+    command: postgres -c timescaledb.max_tuples_decompressed_per_dml_transaction=0 -c max_locks_per_transaction=4096 -c timescaledb.telemetry_level=off
+    environment:
+      - POSTGRES_USER=tracearr
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-tracearr}
+      - POSTGRES_DB=tracearr
+    volumes:
+      - /mnt/app/db/tracearr/data:/home/postgres/pgdata/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tracearr"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - tracearr-network
+
+  redis:
+    image: redis:8-alpine
+    container_name: tracearr-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - /mnt/app/db/tracearr/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - tracearr-network
+
+networks:
+  tracearr-network:
+    driver: bridge

@@ -1,0 +1,53 @@
+###########################
+#        Templates        #
+###########################
+templates:
+  Actor:
+    smart_filter:
+      any:
+        actor: tmdb
+      sort_by: release.desc
+      validate: false
+    tmdb_person: <<person>>
+    sync_mode: append
+
+###########################
+#       Collections       #
+###########################
+collections:
+  # Separator for Actor Collections
+  Actor Collections:
+    sort_title: +_05_01 Actor Collections
+    blank_collection: true
+    collection_mode: hide
+    visible_home: true
+    visible_shared: true
+
+  "Liv Ullmann":
+    template: {name: Actor, person: 11916}
+    sort_title: +_05_02 Liv Ullmann
+    summary: "Films featuring Norwegian actress Liv Ullmann, known for her powerful collaborations with director Ingmar Bergman. Her performances in films like 'Persona', 'Cries and Whispers', and 'Scenes from a Marriage' are landmarks of psychological cinema."
+
+  "Mads Mikkelsen":
+    sort_title: +_05_03 Mads Mikkelsen
+    imdb_list:
+      - https://www.imdb.com/list/ls536975347/
+      - https://www.imdb.com/list/ls029108885/
+    summary: "Films featuring Danish actor Mads Mikkelsen, known for his intense performances and versatility across genres, from Hollywood blockbusters to acclaimed European art films. His work includes 'Casino Royale', 'The Hunt', and 'Another Round'."
+    collection_order: release.desc
+    sync_mode: append
+
+  "Max von Sydow":
+    template: {name: Actor, person: 2201}
+    sort_title: +_05_04 Max von Sydow
+    summary: "Films featuring Swedish actor Max von Sydow, known for his long collaboration with Ingmar Bergman and versatile roles across international cinema. His iconic performances include 'The Seventh Seal', 'The Exorcist', and 'Pelle the Conqueror'."
+
+  "Setsuko Hara":
+    template: {name: Actor, person: 95504}
+    sort_title: +_05_05 Setsuko Hara
+    summary: "Films starring Japanese actress Setsuko Hara, often called 'The Eternal Virgin' and known for her performances in Yasujirō Ozu's films including 'Tokyo Story' and 'Late Spring'. She was considered the embodiment of Japanese womanhood in the post-war era."
+
+  "Toshiro Mifune":
+    template: {name: Actor, person: 7450}
+    sort_title: +_05_06 Toshiro Mifune
+    summary: "Films starring legendary Japanese actor Toshiro Mifune, best known for his 16 collaborations with director Akira Kurosawa, including classics like 'Seven Samurai', 'Rashomon', and 'Yojimbo'. His intense, physical performances revolutionized Japanese cinema."

@@ -1,0 +1,164 @@
+###########################
+#        Templates        #
+###########################
+templates:
+  Theme:
+    smart_filter:
+      all:
+        genre: <<genre>>
+        year: <<years>>
+      sort_by: title.asc
+      validate: false
+    sync_mode: append
+
+###########################
+#       Collections       #
+###########################
+collections:
+  # Separator for Thematic Collections
+  Thematic Collections:
+    sort_title: +_07_01 Thematic Collections
+    blank_collection: true
+    collection_mode: hide
+    visible_home: true
+    visible_shared: true
+
+  # All collections alphabetized
+  "Animation Auteurs":
+    smart_filter:
+      any:
+        director:
+          - "Hayao Miyazaki"
+          - "Satoshi Kon"
+          - "Isao Takahata"
+          - "Mamoru Hosoda"
+          - "Makoto Shinkai"
+          - "Tomm Moore"
+          - "Sylvain Chomet"
+      sort_by: title.asc
+    sort_title: +_07_02 Animation Auteurs
+    summary: "A collection of films by influential animation directors known for their artistic vision, unique style, and contribution to the medium. Featuring works from Studio Ghibli founders Miyazaki and Takahata, psychological storyteller Satoshi Kon, visually stunning films from Makoto Shinkai, and other acclaimed animation auteurs from around the world."
+    sync_mode: append
+
+  "Art House Cinema":
+    smart_filter:
+      any:
+        studio: "Criterion Collection"
+        country:
+          - "France"
+          - "Sweden"
+          - "Japan"
+        director:
+          - "Ingmar Bergman"
+          - "Akira Kurosawa"
+          - "Andrei Tarkovsky"
+          - "Federico Fellini"
+      sort_by: title.asc
+    sort_title: +_07_03 Art House Cinema
+    summary: "A collection of art house films known for their artistic, experimental, or avant-garde content, often exploring challenging themes and utilizing unconventional narrative techniques."
+    sync_mode: append
+
+  "Arthouse Horror":
+    smart_filter:
+      all:
+        genre: Horror
+        any:
+          studio: "Criterion Collection"
+          director:
+            - "Dario Argento"
+            - "David Lynch"
+            - "Ingmar Bergman"
+            - "Roman Polanski"
+      sort_by: release.desc
+    sort_title: +_07_04 Arthouse Horror
+    summary: "Horror films with artistic sensibilities, emphasizing atmosphere, psychological depth, and thematic richness over conventional scares."
+    sync_mode: append
+
+  "Black & White Masterpieces":
+    tmdb_discover:
+      with_keywords: 12999  # Black and white keyword
+      vote_average.gte: 8.0
+      primary_release_date.lte: 1975-12-31
+      sort_by: vote_average.desc
+      limit: 200
+    collection_order: alpha
+    radarr_add_missing: false
+    sort_title: +_07_05 Black and White
+    summary: "A curated collection of significant black and white films that showcase the artistic power of monochrome cinematography."
+    sync_mode: append
+
+  "Cirque du Soleil":
+    sort_title: +_07_06 Cirque du Soleil
+    imdb_list: https://www.imdb.com/list/ls031689972/
+    summary: "A collection of performances and films from Cirque du Soleil, the Canadian entertainment company known for its circus arts and street entertainment."
+    collection_order: release
+    sync_mode: append
+    url_poster: https://theposterdb.com/api/assets/73046
+
+  "Existential Cinema":
+    radarr_taglist: KAI-existential-cinema
+    collection_order: release.desc
+    sort_title: +_07_07 Existential Cinema
+    summary: "Films that explore existential themes, questioning the nature of human existence, meaning, and purpose."
+    sync_mode: append
+
+  "Experimental Cinema":
+    smart_filter:
+      any:
+        director:
+          - "Stan Brakhage"
+          - "Hollis Frampton"
+          - "Jean Cocteau"
+      sort_by: year.asc
+    sort_title: +_07_08 Experimental Cinema
+    summary: "Avant-garde and experimental works that push the boundaries of conventional filmmaking techniques and narrative structures."
+    sync_mode: append
+
+  "Films About Filmmaking":
+    smart_filter:
+      any:
+        title:
+          - "8½"
+          - "Day for Night"
+          - "Cinema Paradiso"
+          - "Sunset Boulevard"
+          - "The Player"
+          - "Singin' in the Rain"
+          - "Adaptation"
+          - "Mulholland Drive"
+          - "Ed Wood"
+      sort_by: title.asc
+    sort_title: +_07_09 Films About Filmmaking
+    summary: "Meta-films about the filmmaking process, exploring the art, business, and creativity of cinema itself."
+    sync_mode: append
+
+  "Japanese Cinema":
+    smart_filter:
+      all:
+        country: Japan
+      sort_by: release.desc
+    sort_title: +_07_10 Japanese Cinema
+    summary: "A collection of films from Japan, featuring works from masters like Kurosawa, Ozu, Mizoguchi, and contemporary directors."
+    sync_mode: append
+
+  "Psychological Thrillers":
+    smart_filter:
+      all:
+        genre: Thriller
+        year.gte: 1940
+        year.lte: 2030
+    sort_title: +_07_11 Psychological Thrillers
+    summary: "Thrillers that focus on the psychological states of their characters, often featuring unreliable narrators, plot twists, and explorations of identity and perception."
+
+  "Scandinavian Cinema":
+    smart_filter:
+      any:
+        country:
+          - Sweden
+          - Denmark
+          - Norway
+          - Finland
+      sort_by: year.desc
+    sort_title: +_07_12 Scandinavian Cinema
+    summary: "Films from the Nordic countries of Sweden, Denmark, Norway, and Finland, known for their distinctive aesthetic and themes."
+    sync_mode: append

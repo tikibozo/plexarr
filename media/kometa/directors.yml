@@ -1,0 +1,111 @@
+###########################
+#        Templates        #
+###########################
+templates:
+  Director:
+    smart_filter:
+      any:
+        director: tmdb
+      sort_by: release.desc
+      validate: false
+    tmdb_person: <<person>>
+    sync_mode: append
+
+###########################
+#       Collections       #
+###########################
+collections:
+  # Separator for Director Collections
+  Director Collections:
+    sort_title: +_04_01 Director Collections
+    blank_collection: true
+    collection_mode: hide
+    visible_home: true
+    visible_shared: true
+
+  "Agnès Varda":
+    template: {name: Director, person: 6817}
+    sort_title: +_04_02 Agnès Varda
+    summary: "Films by pioneering French filmmaker Agnès Varda, a key figure in the French New Wave movement. Her unique cinematic voice blended documentary and fiction with a distinctly feminist perspective in works like 'Cleo from 5 to 7' and 'The Gleaners and I'."
+
+  "Akira Kurosawa":
+    template: {name: Director, person: 5026}
+    sort_title: +_04_03 Akira Kurosawa
+    summary: "A collection of films by legendary Japanese director Akira Kurosawa, known for masterpieces like 'Seven Samurai', 'Rashomon', and 'Ran'. His work has influenced countless filmmakers and continues to be celebrated for its technical precision and humanistic themes."
+
+  "Alfred Hitchcock":
+    sort_title: +_04_04 Alfred Hitchcock
+    imdb_list: https://www.imdb.com/list/ls000771292/
+    summary: "The suspenseful masterpieces of Alfred Hitchcock, the 'Master of Suspense' whose innovative techniques in films like 'Psycho', 'Vertigo', 'Rear Window', and 'North by Northwest' revolutionized the thriller genre. His work is characterized by psychological tension, voyeuristic themes, and his famous cameo appearances."
+    collection_order: release.desc
+    sync_mode: append
+
+  "David Lynch":
+    template: {name: Director, person: 5602}
+    sort_title: +_04_05 David Lynch
+    summary: "The surrealist films of American director David Lynch, known for dreamlike narratives, unsettling imagery, and exploration of the subconscious. His distinctive works include 'Blue Velvet', 'Mulholland Drive', 'Eraserhead', and 'Lost Highway', alongside his cult television series 'Twin Peaks'."
+
+  "Guillermo del Toro":
+    sort_title: +_04_06 Guillermo del Toro
+    imdb_list:
+      - https://www.imdb.com/list/ls046933910/
+      - https://www.imdb.com/list/ls069076995/
+      - https://www.imdb.com/list/ls022112190/
+      - https://www.imdb.com/list/ls069461094/
+    summary: "Films by Mexican filmmaker Guillermo del Toro, known for blending fantasy and horror with striking visual style and emotional depth. His works include 'Pan's Labyrinth', 'The Shape of Water', and 'The Devil's Backbone'."
+    collection_order: release.desc
+    sync_mode: append
+
+  "Hayao Miyazaki":
+    template: {name: Director, person: 608}
+    sort_title: +_04_07 Hayao Miyazaki
+    summary: "The enchanting animated films of Japanese director Hayao Miyazaki, co-founder of Studio Ghibli. His works are known for their rich storytelling, ecological themes, strong female protagonists, and breathtaking animation in films like 'Spirited Away', 'My Neighbor Totoro', and 'Princess Mononoke'."
+
+  "Ingmar Bergman":
+    template: {name: Director, person: 6648}
+    sort_title: +_04_08 Ingmar Bergman
+    summary: "The works of Swedish master Ingmar Bergman, known for his exploration of existential themes, psychological depth, and profound examinations of the human condition in films like 'The Seventh Seal', 'Persona', and 'Wild Strawberries'."
+
+  "Ishirō Honda":
+    template: {name: Director, person: 18598}
+    sort_title: +_04_09 Ishirō Honda
+    summary: "Films by Japanese director Ishirō Honda, best known for creating Godzilla and pioneering the kaiju (giant monster) genre. While celebrated for his science fiction and monster films, his work often contained subtle anti-war and environmental messages reflecting post-war Japanese anxieties."
+
+  "Luc Besson":
+    template: {name: Director, person: 59}
+    sort_title: +_04_10 Luc Besson
+    summary: "Films by French director Luc Besson, known for his visually distinctive style and genre-blending approach. His work ranges from action thrillers like 'Léon: The Professional' and 'Nikita' to science fiction adventures like 'The Fifth Element' and 'Lucy', often featuring strong female protagonists and stylized action sequences."
+
+  "Martin Scorsese":
+    template: {name: Director, person: 1032}
+    sort_title: +_04_11 Martin Scorsese
+    summary: "Films by acclaimed American director Martin Scorsese, known for his gritty, often violent storytelling and virtuoso filmmaking technique. His extensive filmography includes classics like 'Taxi Driver', 'Goodfellas', 'Raging Bull', and 'The Departed'."
+
+  "Quentin Tarantino":
+    sort_title: +_04_12 Quentin Tarantino
+    summary: "Films by American director Quentin Tarantino, known for his nonlinear storytelling, stylized violence, razor-sharp dialogue, and extensive pop culture references. His works include 'Pulp Fiction', 'Reservoir Dogs', and 'Kill Bill', showcasing his recurring themes of revenge, criminal underworlds, and exploitation film aesthetics."
+    imdb_list: https://www.imdb.com/list/ls069036522/
+    collection_order: release.desc
+    sync_mode: sync
+
+  "Stan Brakhage":
+    template: {name: Director, person: 563461}
+    sort_title: +_04_13 Stan Brakhage
+    summary: "The avant-garde, experimental works of Stan Brakhage, one of the most important figures in 20th-century experimental film. His films are known for their abstract imagery, hand-painted frames, and exploration of vision, perception, and consciousness."
+
+  "Stanley Kubrick":
+    template: {name: Director, person: 240}
+    sort_title: +_04_14 Stanley Kubrick
+    summary: "The meticulously crafted films of Stanley Kubrick, known for his perfectionism, technical innovation, and exploration of human nature. His diverse body of work includes masterpieces like '2001: A Space Odyssey', 'A Clockwork Orange', 'The Shining', and 'Dr. Strangelove'."
+
+  "Wes Anderson":
+    sort_title: +_04_15 Wes Anderson
+    summary: "Films by American director Wes Anderson, known for his meticulously symmetrical visual style, distinctive color palettes, eccentric characters, and whimsical storytelling. His works include 'The Royal Tenenbaums', 'The Grand Budapest Hotel', 'Moonrise Kingdom', and 'Fantastic Mr. Fox'."
+    imdb_list: https://www.imdb.com/list/ls560275272/
+    collection_order: release.desc
+    sync_mode: append
+
+  "Yasujirō Ozu":
+    template: {name: Director, person: 95501}
+    sort_title: +_04_16 Yasujirō Ozu
+    summary: "The contemplative films of Japanese master Yasujirō Ozu, known for his distinctive 'pillow shots', low camera positions, and profound explorations of family life and generational change in post-war Japan through works like 'Tokyo Story', 'Late Spring', and 'An Autumn Afternoon'."

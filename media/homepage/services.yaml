@@ -11,7 +11,7 @@
         widget:
             type: plex
             url: https://plex.yourdomain.com
-            key: keyyyy 
+            key: keyyyy
 
     - Tautulli:
         icon: tautulli.png
@@ -21,7 +21,7 @@
         widget:
             type: tautulli
             url: http://server.mylocal:8181
-            key: keyyyy 
+            key: keyyyy
 
     - TrueNAS:
         icon: truenas.png
@@ -29,8 +29,16 @@
         widget:
             type: truenas
             url: http://server.mylocal:81
-            key: keyyyyyy 
+            key: keyyyyyy
             fields: ["load", "uptime", "alerts"]
+
+    - Zabbix:
+        icon: zabbix.png
+        widget:
+            type: zabbix
+            url: https://zabbix.yourdomain.com
+            key: keyyyy
+            fields: ["warning", "average", "high", "disaster"]
 
 - Media Management:
     - Radarr:
@@ -41,9 +49,8 @@
         widget:
             type: radarr
             url: http://server.mylocal:7878
-            key: keyyyy 
-#           fields: ["wanted", "missing", "queued", "movies"]
-            fields: ["queued"]
+            key: keyyyy
+            fields: ["queued", "wanted"]
 
     - Radarr (4k):
         icon: radarr.png
@@ -53,9 +60,8 @@
         widget:
             type: radarr
             url: http://server.mylocal:7979
-            key: keyyy 
-#           fields: ["wanted", "missing", "queued", "movies"]
-            fields: ["queued"]
+            key: keyyyy
+            fields: ["queued", "wanted"]
 
     - Sonarr:
         icon: sonarr.png
@@ -65,9 +71,8 @@
         widget:
             type: sonarr
             url: http://server.mylocal:8989
-            key: keyyy 
-#           fields: ["wanted", "queued", "series"]
-            fields: ["queued"]
+            key: keyyyy
+            fields: ["queued", "wanted"]
 
     - Sonarr (4k):
         icon: sonarr.png
@@ -77,9 +82,8 @@
         widget:
             type: sonarr
             url: http://server.mylocal:9090
-            key: keyyy 
-#           fields: ["wanted", "queued", "series"]
-            fields: ["queued"]
+            key: keyyyy
+            fields: ["queued", "wanted"]
 
     - Lidarr:
         icon: lidarr.png
@@ -89,8 +93,7 @@
         widget:
             type: lidarr
             url: http://server.mylocal:8686
-            key: keyyy 
-#           fields: ["wanted", "missing", "queued", "albums"]
+            key: keyyyy
             fields: ["queued"]
 
     - Bazarr:
@@ -101,7 +104,7 @@
         widget:
             type: bazarr
             url: http://server.mylocal:6767
-            key: keyyy 
+            key: keyyyy
             fields: ["missingEpisodes", "missingMovies"]
 
     - Bazarr (4k):
@@ -112,54 +115,53 @@
         widget:
             type: bazarr
             url: http://server.mylocal:6868
-            key: keyyy 
+            key: keyyyy
             fields: ["missingEpisodes", "missingMovies"]
 
-- Requests & Downloads:
-    - Overseerr:
-        icon: overseerr.png
-        href: https://overseerr.yourdomain.com
+    - Audiobookshelf:
+        icon: audiobookshelf
+        href: http://server.mylocal:13378
         server: server-docker
-        container: overseerr
+        container: audiobookshelf
+        widget:
+            type: audiobookshelf
+            url: http://server.mylocal:13378
+            key: keyyyy
+            fields: ["books", "booksDuration"]
+
+- Requests & Downloads:
+    - Seerr:
+        icon: overseerr.png
+        href: https://requests.yourdomain.com
+        server: server-docker
+        container: seerr
         widget:
             type: overseerr
-            url: https://overseerr.yourdomain.com
-            key: keyyy 
-#           fields: ["pending", "approved", "available", "processing"]
+            url: https://requests.yourdomain.com
+            key: keyyyy
             fields: ["approved", "processing"]
 
-    - sabnzbd 1:
-        icon: sabnzbd 
+    - sabnzbd:
+        icon: sabnzbd
         href: http://server.mylocal:8085/sabnzbd
         server: server-docker
         container: sabnzbd
         widget:
             type: sabnzbd
             url: http://server.mylocal:8085/sabnzbd
-            key: keyyy 
-            fields: ["rate", "queue", "timeleft"]
-
-    - sabnzbd 2:
-        icon: sabnzbd 
-        href: http://server.mylocal:8086/sabnzbd
-        server: server-docker
-        container: sabnzbd2
-        widget:
-            type: sabnzbd
-            url: http://server.mylocal:8086/sabnzbd
-            key: keyyy 
+            key: keyyyy
             fields: ["rate", "queue", "timeleft"]
 
     - qBittorrent:
-        icon: qbittorrent 
+        icon: qbittorrent
         href: http://server.mylocal:8081
         server: server-docker
-        container: qbittorrent 
+        container: qbittorrent
         widget:
             type: qbittorrent
             url: http://server.mylocal:8081
-            user: user 
-            password: pass 
+            user: user
+            password: pass
             fields: ["leech", "download", "seed", "upload"]
 
     - Autobrr:
@@ -170,41 +172,18 @@
         widget:
             type: autobrr
             url: http://server.mylocal:7474
-            key: keyyy 
-#           fields: ["approvedPushes", "rejectedPushes", "filters", "indexers"]
+            key: keyyyy
             fields: ["approvedPushes", "rejectedPushes"]
 
     - Tdarr:
         icon: tdarr.png
         href: http://server.mylocal:8265
         server: server-docker
-        container: tdarr 
+        container: tdarr
         widget:
-            type: tdarr 
+            type: tdarr
             url: http://server.mylocal:8265
-#           fields: ["queue", "processed", "errored", "saved"]
             fields: ["queue", "errored"]
-
-#  - Prowlarr:
-#      icon: prowlarr 
-#      href: http://server.mylocal:9696
-#      server: server-docker
-#      container: prowlarr 
-#      widget:
-#        type: prowlarr 
-#        url: http://server.mylocal:9696
-#        key: keyy 
-#        fields: ["numberOfGrabs", "numberOfQueries" ]
-
-#  - Jackett:
-#      icon: jackett 
-#      href: http://server.mylocal:9117
-#      server: server-docker
-#      container: jackett 
-#      widget:
-#        type: jackett 
-#        url: http://server.mylocal:9117
-#        fields: ["configured", "errored"]
 
 - Networking:
     - gluetun:
@@ -213,29 +192,8 @@
         container: gluetun
         widget:
             type: gluetun
-            url: http://server.mylocal:8000
-            key: keyyy 
-            fields: ["public_ip", "region", "country"]
-
-    - gluetun (nzb1):
-        icon: gluetun
-        server: server-docker
-        container: gluetun-nzb
-        widget:
-            type: gluetun
-            url: http://server.mylocal:8002
-            key: keyy 
-            fields: ["public_ip", "region", "country"]
-
-    - gluetun (nzb2):
-        icon: gluetun
-        href: http://server.mylocal:8086/sabnzbd
-        server: server-docker
-        container: gluetun-nzb2
-        widget:
-            type: gluetun
-            url: http://server.mylocal:8003
-            key: keyy 
+            url: http://server.mylocal:8011
+            key: keyyyy
             fields: ["public_ip", "region", "country"]
 
     - gluetun (qbt):
@@ -244,8 +202,8 @@
         container: gluetun-qbt
         widget:
             type: gluetun
-            url: http://server.mylocal:8001
-            key: keyy 
+            url: http://server.mylocal:8005
+            key: keyyyy
             fields: ["public_ip", "region", "country"]
 
     - Traefik:

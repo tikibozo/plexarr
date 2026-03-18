@@ -26,6 +26,7 @@ Stack contents:
     - [Gluetun](https://github.com/qdm12/gluetun) / [GSP-Qbittorrent-Gluetun-sync-port-mod](https://github.com/t-anc/GSP-Qbittorent-Gluetun-sync-port-mod) - VPN
     - [Tautulli](https://tautulli.com/) - Plex monitoring/notifications
     - [Kometa](https://kometa.wiki/en/latest/) - Dynamic collections/overlays
+    - [Maintainerr](https://github.com/jorenn92/maintainerr) - Media lifecycle management
     - [qBittorrent](https://www.qbittorrent.org/) / [Qui](https://github.com/autobrr/qui) / [SABnzbd](https://sabnzbd.org/) - Download
     - [Autobrr](https://autobrr.com/) / [TheLounge](https://thelounge.chat/) - IRC Announces
     - [Unpackerr](https://github.com/Unpackerr/unpackerr) - Archive extraction
@@ -44,6 +45,15 @@ Stack contents:
 - [mon](https://github.com/tikibozo/plexarr/blob/main/mon/docker-compose.yml)/[monproxy](https://github.com/tikibozo/plexarr/blob/main/monproxy/docker-compose.yml): Monitoring
     - [Zabbix](https://www.zabbix.com/) - Monitoring & alerting server
     - [Pushover](https://pushover.net/) - Mobile push notifications
+- [rpt](https://github.com/tikibozo/plexarr/blob/main/rpt/docker-compose.yml): Reporting & analytics
+    - [Tracearr](https://github.com/connorgallopo/tracearr) - Plex analytics with TimescaleDB
+- [abook](https://github.com/tikibozo/plexarr/blob/main/abook/docker-compose.yml): Audiobooks
+    - [ReadMeABook](https://github.com/kikootwo/readmeabook) - Audiobook management
+    - [Audiobookshelf](https://github.com/advplyr/audiobookshelf) - Audiobook/podcast server
+    - [abs-tract](https://github.com/arranHS/abs-tract) - Audiobookshelf metadata extraction
+    - [Plex OIDC Bridge](https://github.com/Blacktirion/plex-oidc-bridge) - Plex authentication bridge
+- [photo](https://github.com/tikibozo/plexarr/blob/main/photo/docker-compose.yml): Photo management
+    - [Immich](https://immich.app/) - Self-hosted photo/video management
 
 A million thanks to the countless contributors to all of those amazing projects! $upport them if you can <3
 
@@ -68,4 +78,4 @@ That said, there are some random bits of context or ideas that may help you, so 
 - I'm not sanitizing all the container config files/databases and including them here, but feel free to ask if you have a question about something that's not configured via the compose files. Some things I do have copies of in the repo for source control, which when editing I copy manually into place in their docker config/db volume. 
 - UID/GID. Most all the files/directories are configured to use plex:plex on my system, though some containers prefer their config files to be owned by root.
 - There are a bunch of dumb helper scripts in /scripts because I got tired of typing commands out. There's also nas-daily.sh which updates docker images (pull & up) and a script to update Azure firewall rules based on dynamic IP changes. Add your user account to the docker group so you don't have to sudo every docker command.
-- 1080p & 4k *arr instances. This is the "old" way of partitioning 4k content. I prefer it since I don't often use 4k media (yet) and by having seperate instances it's easy to point dedicated Plex libraries at the 4k directories (and not share with Plex users.) Also Overseerr supports this setup and lights up additional support for requesting in 1080/standard and 4k when you add multiple instances and configure them for 4k. Plex's editions support (or simply transcoding hw heft) can alleviate the need for the addionional services, but extra sonarr/radarr instances are relatively cheap imho.
+- 1080p & 4k *arr instances. This is the "old" way of partitioning 4k content. I prefer it since I don't often use 4k media (yet) and by having seperate instances it's easy to point dedicated Plex libraries at the 4k directories (and not share with Plex users.) Also Seerr supports this setup and lights up additional support for requesting in 1080/standard and 4k when you add multiple instances and configure them for 4k. Plex's editions support (or simply transcoding hw heft) can alleviate the need for the addionional services, but extra sonarr/radarr instances are relatively cheap imho.

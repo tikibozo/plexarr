@@ -1,0 +1,42 @@
+###########################
+#        Templates        #
+###########################
+templates:
+  Curated:
+    sort_title: +_03_<<sort>>
+    sync_mode: append
+
+###########################
+#       Collections       #
+###########################
+collections:
+  # Separator for Curated Collections
+  Curated Collections:
+    sort_title: +_03_01 Curated Collections
+    blank_collection: true
+    collection_mode: hide
+    visible_home: true
+    visible_shared: true
+
+  # Criterion Collection (from existing Movies.yml)
+  "Criterion Collection":
+    template: {name: Curated, sort: 02 Criterion, order: alpha}
+    imdb_list:
+      - https://www.imdb.com/list/ls577647608/
+      - https://www.imdb.com/list/ls087831830/
+      - https://www.imdb.com/list/ls002973086/
+    summary: "The Criterion Collection is a curated selection of important classic and contemporary films, dedicated to gathering the greatest films from around the world and publishing them in editions of the highest technical quality with supplemental features that enhance the appreciation of the art of film."
+    url_poster: https://theposterdb.com/api/assets/206770
+
+  # Praxis Collection (from existing Movies.yml)
+  "Praxis - Based Films for Lefties":
+    template: {name: Curated, sort: 03 Praxis, order: custom}
+    sync_mode: sync
+    summary: "A collection of films for leftists, featuring works that are anti-imperialism, anti-capitalism, pro-workplace democracy, rooted in leftist theory, or that depict union formation or workplace power dynamics."
+    letterboxd_list: https://letterboxd.com/bulgerpaul/list/praxis-based-films-for-lefties/
+
+  # Timeout list (from existing Movies.yml)
+  "Timeout 100 Best Movies":
+    template: {name: Curated, sort: 04 Timeout, order: alpha}
+    imdb_list: https://www.imdb.com/list/ls538972757
+    summary: "The 100 best movies of all time according to Timeout.com, representing a diverse selection of essential cinema from around the world."
