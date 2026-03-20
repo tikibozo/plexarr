@@ -369,6 +369,29 @@ services:
     devices:
       - /dev/dri:/dev/dri
 
+  fetcharr:
+    image: egg82/fetcharr:latest
+    container_name: fetcharr
+    restart: unless-stopped
+    user: 999:999
+    environment:
+      - TZ=Some/Region
+      - LOG_MODE=info
+      - DATA_DIR=/data
+      - CACHE_DIR=/cache
+      - SEARCH_AMOUNT=5
+      - SEARCH_INTERVAL=6hours
+      - MONITORED_ONLY=true
+      - MISSING_ONLY=false
+      - USE_CUTOFF=true
+      - RADARR_0_URL=http://radarr:7878
+      - RADARR_0_API_KEY=keyy
+      - SONARR_0_URL=http://sonarr:8989
+      - SONARR_0_API_KEY=keyy
+    volumes:
+      - /mnt/app/db/fetcharr/data:/data
+      - /mnt/app/db/fetcharr/cache:/cache
+
   maintainerr:
     image: ghcr.io/jorenn92/maintainerr:latest
     container_name: maintainerr

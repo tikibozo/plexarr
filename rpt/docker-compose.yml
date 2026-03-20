@@ -94,6 +94,19 @@ services:
     networks:
       - tracearr-network
 
+  capacitarr:
+    image: ghentstarshadow/capacitarr:stable
+    container_name: capacitarr
+    ports:
+      - "2187:2187"
+    environment:
+      - PUID=999
+      - PGID=999
+      - JWT_SECRET=changeme
+    volumes:
+      - /mnt/app/db/capacitarr:/config
+    restart: unless-stopped
+
 networks:
   tracearr-network:
     driver: bridge

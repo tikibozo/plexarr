@@ -40,13 +40,15 @@ Stack contents:
     - [Traefik](https://github.com/traefik/traefik)  - Reverse proxy
 - [sys](https://github.com/tikibozo/plexarr/blob/main/sys/docker-compose.yml): System services
     - [Postfix](https://github.com/loganmarchione/docker-postfixrelay) - SMTP relay
-    - [Checkrr](https://github.com/aetaric/checkrr) - Bitrot detection & remediation 
+    - [Checkrr](https://github.com/aetaric/checkrr) - Bitrot detection & remediation
     - [Rclone](https://rclone.org/) - Backups
+    - [Drydock](https://github.com/CodeSWhat/drydock) / [Trivy](https://github.com/aquasecurity/trivy) - Container security scanning
 - [mon](https://github.com/tikibozo/plexarr/blob/main/mon/docker-compose.yml)/[monproxy](https://github.com/tikibozo/plexarr/blob/main/monproxy/docker-compose.yml): Monitoring
     - [Zabbix](https://www.zabbix.com/) - Monitoring & alerting server
     - [Pushover](https://pushover.net/) - Mobile push notifications
 - [rpt](https://github.com/tikibozo/plexarr/blob/main/rpt/docker-compose.yml): Reporting & analytics
     - [Tracearr](https://github.com/connorgallopo/tracearr) - Plex analytics with TimescaleDB
+    - [Capacitarr](https://github.com/GhentStarShadow/capacitarr) - Storage capacity planning
 - [abook](https://github.com/tikibozo/plexarr/blob/main/abook/docker-compose.yml): Audiobooks
     - [ReadMeABook](https://github.com/kikootwo/readmeabook) - Audiobook management
     - [Audiobookshelf](https://github.com/advplyr/audiobookshelf) - Audiobook/podcast server
