@@ -1,15 +1,11 @@
 #!/bin/bash
-# If you don't often invite users and want to reduce your attack surface, 
-# this enables/disables wizarr by commenting out the service in the compose 
-# file. Monitoring won't freak since it isn't a stopped container, and it 
-# won't get restarted each night by the updater.
 
 # Hardcoded path to the Docker Compose file
 DOCKER_COMPOSE_FILE="/mnt/app/home/user/compose/nas/docker-compose.yml"
 
 # Check if parameters are provided
 if [[ $# -ne 1 ]]; then
-    echo "Usage: wizarr [up|down]"
+    echo "Usage: wizarr [up|down|comment|uncomment]"
     exit 1
 fi
 
@@ -45,8 +41,14 @@ case $1 in
         # Run `dco up` command with additional options
         cd "$(dirname "$DOCKER_COMPOSE_FILE")" && dco up -d --remove-orphans
         ;;
+    "comment")
+        comment_wizarr_service
+        ;;
+    "uncomment")
+        uncomment_wizarr_service
+        ;;
     *)
-        echo "Invalid parameter. Usage: wizarr [up|down]"
+        echo "Invalid parameter. Usage: wizarr [up|down|comment|uncomment]"
         exit 1
         ;;
 esac

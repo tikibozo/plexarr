@@ -1,0 +1,68 @@
+#!/usr/bin/env zsh
+
+# Get the current hostname
+HOSTNAME="$(hostname)"
+
+# Print a header
+echo "==== Updating Docker containers on host: ${HOSTNAME} ===="
+
+case "${HOSTNAME}" in
+
+  "server")
+    echo Update nas
+    docker compose -f /mnt/app/home/user/compose/nas/docker-compose.yml pull -q
+    docker compose -f /mnt/app/home/user/compose/nas/docker-compose.yml up -d --always-recreate-deps
+    echo ""
+
+    echo Update media
+    docker compose -f /mnt/app/home/user/compose/media/docker-compose.yml pull -q
+    docker compose -f /mnt/app/home/user/compose/media/docker-compose.yml up -d --always-recreate-deps
+    echo ""
+
+    echo Update sys
+    docker compose -f /mnt/app/home/user/compose/sys/docker-compose.yml pull -q
+    docker compose -f /mnt/app/home/user/compose/sys/docker-compose.yml up -d --always-recreate-deps
+    echo ""
+
+    echo Update abook
+    docker compose -f /mnt/app/home/user/compose/abook/docker-compose.yml pull -q
+    docker compose -f /mnt/app/home/user/compose/abook/docker-compose.yml up -d --always-recreate-deps
+    echo ""
+
+    echo Update rpt
+    docker compose -f /mnt/app/home/user/compose/rpt/docker-compose.yml pull -q
+    docker compose -f /mnt/app/home/user/compose/rpt/docker-compose.yml up -d --always-recreate-deps
+    echo ""
+
+    echo Update monproxy
+    docker compose -f /mnt/app/home/user/compose/monproxy/docker-compose.yml pull -q
+    docker compose -f /mnt/app/home/user/compose/monproxy/docker-compose.yml up -d --always-recreate-deps
+    echo ""
+
+    echo Update photo
+    docker compose -f /mnt/app/home/user/compose/photo/docker-compose.yml pull -q
+    docker compose -f /mnt/app/home/user/compose/photo/docker-compose.yml up -d --always-recreate-deps
+    echo ""
+
+    docker image prune -a -f
+    echo ""
+    ;;
+
+  "monitoringserver")
+    echo Update mon
+    docker compose -f /home/user/compose/mon/docker-compose.yml pull -q
+    docker compose -f /home/user/compose/mon/docker-compose.yml up -d --always-recreate-deps
+    echo ""
+
+    docker image prune -a -f
+    echo ""
+    ;;
+
+  *)
+    echo "ERROR: Unknown hostname: ${HOSTNAME}"
+    echo "Please update the script with a valid case for this hostname."
+    exit 1
+    ;;
+esac
+
+echo "==== Docker containers updated successfully on ${HOSTNAME} ===="

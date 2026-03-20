@@ -1,2 +1,6 @@
 #!/bin/bash
-docker compose stop
+source "$(dirname "$(readlink -f "$0")")/common.sh"
+
+for proj in $PROJECTS; do
+    docker compose -f "$BASE/$proj/docker-compose.yml" stop
+done
