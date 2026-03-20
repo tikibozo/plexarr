@@ -17,7 +17,7 @@ rm -f plex.yourdomain.com.pfx plex.fullchain plex.key
 # Update postfix 
 scp pfsense:/conf/acme/smtp.all.pem server:~/smtp.yourdomain.com.pem
 scp pfsense:/conf/acme/smtp.key server:~/smtp.yourdomain.com.key
-ssh server 'sudo mv ~/smtp.yourdomain.com.* /mnt/app/db/postfix/certs/ && sudo chown root:root /mnt/app/db/postfix/certs/smtp.yourdomain.com.* && /mnt/app/home/jon/compose/scripts/dr postfix' 
+ssh server 'sudo mv ~/smtp.yourdomain.com.* /mnt/app/db/postfix/certs/ && sudo chown root:root /mnt/app/db/postfix/certs/smtp.yourdomain.com.* && /mnt/app/home/user/compose/scripts/dr postfix' 
 
 scp pfsense:/conf/acme/smtp.all.pem monserver:~/smtp.yourdomain.com.pem
 scp pfsense:/conf/acme/smtp.key monserver:~/smtp.yourdomain.com.key
@@ -26,4 +26,4 @@ ssh monserver 'sudo mv ~/smtp.yourdomain.com.pem /etc/ssl/certs/smtp.yourdomain.
 # Update zabbix
 scp pfsense:/conf/acme/zabbix.crt monserver:~/ssl.crt
 scp pfsense:/conf/acme/zabbix.key monserver:~/ssl.key
-ssh monserver 'sudo mv ~/ssl.* /data/opt/zabbix/ssl/ && sudo chown root:root /data/opt/zabbix/ssl/ssl.* && /home/jon/compose/scripts/dr zabbix-web-nginx-mysql' 
+ssh monserver 'sudo mv ~/ssl.* /data/opt/zabbix/ssl/ && sudo chown root:root /data/opt/zabbix/ssl/ssl.* && /home/user/compose/scripts/dr zabbix-web-nginx-mysql' 

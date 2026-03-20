@@ -1,16 +1,6 @@
 #!/bin/bash
+source "$(dirname "$(readlink -f "$0")")/common.sh"
 
-if [ $HOSTNAME = "upgrade" ]; then
-    docker compose -f "/mnt/home/user/compose/test/docker-compose.yml" up -d
-    exit
-fi
-
-if [ $HOSTNAME = "monitoringserver" ]; then
-    docker compose -f "/home/user/compose/mon/docker-compose.yml" up -d
-    exit
-fi
-
-docker compose -f "/mnt/app/home/user/compose/nas/docker-compose.yml" up -d
-docker compose -f "/mnt/app/home/user/compose/sys/docker-compose.yml" up -d
-docker compose -f "/mnt/app/home/user/compose/monproxy/docker-compose.yml" up -d
-docker compose -f "/mnt/app/home/user/compose/media/docker-compose.yml" up -d
+for proj in $PROJECTS; do
+    docker compose -f "$BASE/$proj/docker-compose.yml" up -d
+done
