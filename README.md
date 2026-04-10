@@ -18,8 +18,14 @@ Internet <-> PFSense <-> TrueNAS Scale
 On to the software stack. I've divided the system into multiple compose projects. This was initially for portability, so I could "down" a project on one system, copy the config files to another, and with an "up" have moved the whole stack somewhere else. Now that it's all on the same system, it also allows me to rebuild the media project without affecting user facing services.
 
 Stack contents:
--  [media](https://github.com/tikibozo/plexarr/blob/main/media/docker-compose.yml): This is the main arr stack, which includes
-    - [Radarr](https://radarr.video/) / [Sonarr](https://sonarr.tv/) / [Lidarr](https://lidarr.audio/) / [Arr Scripts](https://github.com/RandomNinjaAtk/arr-scripts) / [Fetcharr](https://github.com/egg82/fetcharr) - Media management
+- [nas](https://github.com/tikibozo/plexarr/blob/main/nas/docker-compose.yml): User facing services
+    - [Plex](https://plex.tv) - Media server
+    - [Seerr](https://seerr.dev/) - Web requests/notifications
+    - [Requestrr](https://github.com/thomst08/requestrr) - Discord requests
+    - [Wizarr](https://github.com/Wizarrrr/wizarr) - New user signup
+    - [Traefik](https://github.com/traefik/traefik)  - Reverse proxy
+- [media](https://github.com/tikibozo/plexarr/blob/main/media/docker-compose.yml): This is the main arr stack, which includes
+    - [Radarr](https://radarr.video/) / [Sonarr](https://sonarr.tv/) / [Arr Scripts](https://github.com/RandomNinjaAtk/arr-scripts) / [Fetcharr](https://github.com/egg82/fetcharr) - Media management
     - [Bazarr](https://www.bazarr.media/) / [Subcleaner](https://github.com/KBlixt/subcleaner) / [Whisper](https://github.com/ahmetoner/whisper-asr-webservice) - Subtitles
     - [Recyclarr](https://github.com/recyclarr/recyclarr) / [TRaSH Guides](https://trash-guides.info/) - Release picking optimizations 
     - [Prowlarr](https://github.com/prowlarr/prowlarr) / [FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) - Indexer management
@@ -32,12 +38,19 @@ Stack contents:
     - [Unpackerr](https://github.com/Unpackerr/unpackerr) - Archive extraction
     - [Tdarr](https://home.tdarr.io/) - Transcoding
     - [Organizr](https://github.com/causefx/Organizr) + [Homepage](https://github.com/benphelps/homepage) - Dashboard
-- [nas](https://github.com/tikibozo/plexarr/blob/main/nas/docker-compose.yml): User facing services
-    - [Plex](https://plex.tv) - Media server
-    - [Seerr](https://seerr.dev/) - Web requests/notifications
-    - [Requestrr](https://github.com/thomst08/requestrr) - Discord requests
-    - [Wizarr](https://github.com/Wizarrrr/wizarr) - New user signup
-    - [Traefik](https://github.com/traefik/traefik)  - Reverse proxy
+- [music](https://github.com/tikibozo/plexarr/blob/main/music/docker-compose.yml): Music library & discovery
+    - [Lidarr](https://lidarr.audio/) - Music library management
+    - [Aurral](https://github.com/lklynet/aurral) - Music discovery & requests
+    - [slskd](https://github.com/slskd/slskd) / [willfarrell/autoheal](https://github.com/willfarrell/docker-autoheal) / [Gluetun](https://github.com/qdm12/gluetun) - Soulseek
+    - [Soularr](https://github.com/mrusse/soularr) - Lidarr → slskd bridge
+    - [oauth2-proxy](https://github.com/oauth2-proxy/oauth2-proxy) - Plex auth
+- [abook](https://github.com/tikibozo/plexarr/blob/main/abook/docker-compose.yml): Audiobooks
+    - [ReadMeABook](https://github.com/kikootwo/readmeabook) - Audiobook management
+    - [Audiobookshelf](https://github.com/advplyr/audiobookshelf) - Audiobook/podcast server
+    - [abs-tract](https://github.com/arranHS/abs-tract) - Audiobookshelf metadata extraction
+    - [Plex OIDC Bridge](https://github.com/Blacktirion/plex-oidc-bridge) - Plex authentication bridge
+- [photo](https://github.com/tikibozo/plexarr/blob/main/photo/docker-compose.yml): Photo management
+    - [Immich](https://immich.app/) - Self-hosted photo/video management
 - [sys](https://github.com/tikibozo/plexarr/blob/main/sys/docker-compose.yml): System services
     - [Postfix](https://github.com/loganmarchione/docker-postfixrelay) - SMTP relay
     - [Checkrr](https://github.com/aetaric/checkrr) - Bitrot detection & remediation
@@ -47,15 +60,8 @@ Stack contents:
     - [Zabbix](https://www.zabbix.com/) - Monitoring & alerting server
     - [Pushover](https://pushover.net/) - Mobile push notifications
 - [rpt](https://github.com/tikibozo/plexarr/blob/main/rpt/docker-compose.yml): Reporting & analytics
-    - [Tracearr](https://github.com/connorgallopo/tracearr) - Plex analytics with TimescaleDB
+    - [Tracearr](https://github.com/connorgallopo/tracearr) - Plex analytics
     - [Capacitarr](https://github.com/GhentStarShadow/capacitarr) - Storage capacity planning
-- [abook](https://github.com/tikibozo/plexarr/blob/main/abook/docker-compose.yml): Audiobooks
-    - [ReadMeABook](https://github.com/kikootwo/readmeabook) - Audiobook management
-    - [Audiobookshelf](https://github.com/advplyr/audiobookshelf) - Audiobook/podcast server
-    - [abs-tract](https://github.com/arranHS/abs-tract) - Audiobookshelf metadata extraction
-    - [Plex OIDC Bridge](https://github.com/Blacktirion/plex-oidc-bridge) - Plex authentication bridge
-- [photo](https://github.com/tikibozo/plexarr/blob/main/photo/docker-compose.yml): Photo management
-    - [Immich](https://immich.app/) - Self-hosted photo/video management
 
 A million thanks to the countless contributors to all of those amazing projects! $upport them if you can <3
 
