@@ -68,9 +68,9 @@ services:
     env_file:
       - ../common/secrets/.runtime/vpn.env
     environment:
-      - VPN_SERVICE_PROVIDER=private internet access
-      - SERVER_REGIONS=CA Vancouver
-      - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24,10.0.0.0/24
+      - VPN_SERVICE_PROVIDER=PROVIDER
+      - SERVER_REGIONS=REGION
+      - FIREWALL_OUTBOUND_SUBNETS=SUBNETS
       - HTTP_CONTROL_SERVER_ADDRESS=:8011
     ports:
       - 8888:8888/tcp # HTTP
@@ -182,9 +182,9 @@ services:
     environment:
       - PORT_FORWARD_ONLY=on
       - VPN_PORT_FORWARDING=on
-      - VPN_SERVICE_PROVIDER=private internet access
-      - SERVER_REGIONS=CA Vancouver
-      - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24,10.0.0.0/24
+      - VPN_SERVICE_PROVIDER=VPN Provider
+      - SERVER_REGIONS=REGION
+      - FIREWALL_OUTBOUND_SUBNETS=SUBNETS
       - HTTP_CONTROL_SERVER_ADDRESS=:8005
       - DOT=off
       - BLOCK_MALICIOUS=off
@@ -280,10 +280,10 @@ services:
     env_file:
       - ../common/secrets/.runtime/vpn.env
     environment:
-      - VPN_SERVICE_PROVIDER=private internet access
-      - SERVER_REGIONS=CA Vancouver
+      - VPN_SERVICE_PROVIDER=VPN PROVIDER
+      - SERVER_REGIONS=REGION
       - VPN_PORT_FORWARDING=on
-      - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24,10.0.0.0/24
+      - FIREWALL_OUTBOUND_SUBNETS=SUBNETS
       - HTTP_CONTROL_SERVER_ADDRESS=:8011
     ports:
       - 5030:5030 # slskd
