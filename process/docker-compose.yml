@@ -2,7 +2,7 @@
 # project: process — post-processing, analytics, *arr-tooling
 #
 # Phase 4 trust zone. Services migrated from:
-#   - media/  — tdarr, whisper, unpackerr, maintainerr, kometa, recyclarr,
+#   - media/  — tdarr, whisper, unpackerr, kometa, recyclarr,
 #               fetcharr, tautulli, kometa-ai (commented)
 #   - rpt/    — tracearr + tracearr-db (timescale) + tracearr-redis
 #   - sys/    — checkrr
@@ -113,24 +113,6 @@ services:
       - /mnt/app/db/unpackerr/logs:/logs
     networks:
       - arr_control
-
-  maintainerr:
-    <<: *hardened
-    image: ghcr.io/jorenn92/maintainerr:main@sha256:b4342e057e089ee9f8cdacd5c7139ffb8ccb5dc2991d939cee678ccbbad2cd5b
-    container_name: maintainerr
-    user: 999:999
-    volumes:
-      - /mnt/app/db/maintainerr:/opt/data
-      - /mnt/data/media:/media
-      - /mnt/data2/media:/media2
-    environment:
-      - TZ=Some/Region
-    ports:
-      - 6246:6246
-    networks:
-      - arr_control
-      - serve_plex_api
-      - arr_egress
 
   kometa:
     <<: *hardened
