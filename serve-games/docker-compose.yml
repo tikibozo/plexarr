@@ -1,0 +1,95 @@
+# host: server
+# project: serve-games — retro gaming server (RomM + MariaDB)
+#
+# Phase 4 trust zone. Migrated from games/.
+
+x-defaults: &defaults
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging: &log
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+# Phase 5: cap_drop baseline. Consumers do `<<: *hardened` + inline
+# `cap_add: [...]` for caps they need back. `cap_drop: [ALL]` removes
+# the 14 default capabilities Docker grants.
+x-hardened: &hardened
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  logging: *log
+
+# Phase 5: LSIO/PUID-based containers need these 5 caps to chown +
+# drop privileges at startup.
+x-lsio-caps: &lsio_caps
+  - CHOWN
+  - FOWNER
+  - DAC_OVERRIDE
+  - SETUID
+  - SETGID
+
+services:
+  romm-db:
+    <<: *hardened
+    # mariadb entrypoint runs as root, chowns /var/lib/mysql, drops to
+    # mysql user via gosu.
+    cap_add: *lsio_caps
+    image: mariadb:11
+    container_name: romm-db
+    env_file:
+      - ../common/secrets/.runtime/games.env
+    environment:
+      MARIADB_DATABASE: romm
+      MARIADB_USER: romm
+    volumes:
+      - /mnt/app/db/romm-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - serve_games_db
+
+  romm:
+    <<: *hardened
+    cap_add: *lsio_caps
+    image: rommapp/romm:4
+    container_name: romm
+    ports:
+      - "8095:8080"
+    env_file:
+      - ../common/secrets/.runtime/games.env
+    environment:
+      DB_HOST: romm-db
+      DB_PORT: 3306
+      DB_NAME: romm
+      DB_USER: romm
+    volumes:
+      - /mnt/data/roms:/romm/library/roms
+      - /mnt/app/db/romm/assets:/romm/assets
+      # Phase 4: ./romm/ moved from games/romm/.
+      - ./romm:/romm/config
+    depends_on:
+      romm-db:
+        condition: service_healthy
+    # nas_default (bridge) added for port-publishing NAT — both other nets
+    # are internal:true and would prevent Docker from DNATing host:8095.
+    networks:
+      - serve_games_db
+      - edge_internal
+      - nas_default
+
+
+networks:
+  nas_default:
+    external: true
+  edge_internal:
+    external: true
+  serve_games_db:
+    external: true

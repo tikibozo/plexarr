@@ -1,0 +1,314 @@
+# host: server
+# project: serve-books — audiobook + ebook stack
+#
+# Phase 4 trust zone. Services migrated from:
+#   - abook/  — audiobookshelf, abs-tract, readmeabook, plex-scan-watcher
+#   - ebook/  — shelfmark, grimmory, grimmory-mariadb
+
+x-defaults: &defaults
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging: &log
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+# Phase 5: cap_drop baseline. Consumers do `<<: *hardened` + inline
+# `cap_add: [...]` for caps they need back. `cap_drop: [ALL]` removes
+# the 14 default capabilities Docker grants.
+x-hardened: &hardened
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  logging: *log
+
+# Phase 5: LSIO/PUID-based containers need these 5 caps to chown +
+# drop privileges at startup.
+x-lsio-caps: &lsio_caps
+  - CHOWN
+  - FOWNER
+  - DAC_OVERRIDE
+  - SETUID
+  - SETGID
+
+services:
+  audiobookshelf:
+    <<: *hardened
+    # NET_BIND_SERVICE because the image binds container port 80 internally
+    # (the 13378:80 host port-mapping is on the docker side, but the in-
+    # container node process still needs to bind 80, which requires the cap
+    # under cap_drop: ALL even when running as root).
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+      - NET_BIND_SERVICE
+    image: ghcr.io/advplyr/audiobookshelf:2.35.0
+    container_name: audiobookshelf
+    ports:
+      - 13378:80
+    volumes:
+      - /mnt/data2/media/audiobooks:/audiobooks
+      - /mnt/data/media/podcasts:/podcasts
+      - /mnt/app/db/audiobookshelf/config:/config
+      - /mnt/app/db/audiobookshelf/metadata:/metadata
+    environment:
+      - TZ=Some/Region
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    labels:
+      - "autoheal=true"
+    # arr_egress (bridge) added so Docker can DNAT host:13378 → container
+    # AND so ABS can reach Audible/cover-art metadata providers.
+    networks:
+      - edge_internal
+      - arr_egress
+
+  readmeabook:
+    <<: *hardened
+    # Multi-process container: supervisord (PID 1 as root) spawns
+    # postgres/redis/node, then the entrypoint remaps them to UID 3001.
+    # CAP_KILL needed because root signaling non-root processes requires
+    # it under cap_drop ALL. Beyond that, the LSIO 5-cap set covers the
+    # init script's chown/chmod/usermod operations.
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+      - KILL
+    image: ghcr.io/kikootwo/readmeabook:1.2.1
+    container_name: readmeabook
+    ports:
+      - "3030:3030"
+    volumes:
+      - /mnt/app/db/readmeabook/config:/app/config
+      - /mnt/app/db/readmeabook/cache:/app/cache
+      - /mnt/download:/download
+      - /mnt/data2/media/audiobooks:/media
+      - /mnt/app/db/readmeabook/pgdata:/var/lib/postgresql/data
+      - /mnt/app/db/readmeabook/redis:/var/lib/redis
+    environment:
+      PUID: 3001
+      PGID: 3001
+      PUBLIC_URL: "https://abooks.yourdomain.com"
+    # Image ships a HEALTHCHECK that's byte-identical to ours — let it own
+    # the config so upstream tuning flows through automatically.
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=edge_internal"
+      - "traefik.http.routers.readmeabook.rule=Host(`abooks.yourdomain.com`) || Host(`abook.yourdomain.com`)"
+      - "traefik.http.routers.readmeabook.entrypoints=websecure"
+      - "traefik.http.routers.readmeabook.tls.certresolver=myresolver"
+      - "traefik.http.routers.readmeabook.middlewares=crowdsec@file,rmab-secure-headers@docker,rmab-ratelimit@docker"
+      - "traefik.http.services.readmeabook.loadbalancer.server.port=3030"
+      - "traefik.http.middlewares.rmab-secure-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.rmab-secure-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.rmab-secure-headers.headers.stsPreload=true"
+      - "traefik.http.middlewares.rmab-secure-headers.headers.frameDeny=true"
+      - "traefik.http.middlewares.rmab-secure-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.rmab-secure-headers.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.rmab-secure-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
+      - "traefik.http.middlewares.rmab-secure-headers.headers.permissionsPolicy=camera=(), microphone=(), geolocation=(), payment=()"
+      - "traefik.http.middlewares.rmab-secure-headers.headers.customResponseHeaders.X-Powered-By="
+      - "traefik.http.middlewares.rmab-secure-headers.headers.customResponseHeaders.Server="
+      - "traefik.http.middlewares.rmab-ratelimit.ratelimit.average=100"
+      - "traefik.http.middlewares.rmab-ratelimit.ratelimit.burst=200"
+      - "traefik.http.middlewares.rmab-ratelimit.ratelimit.period=1m"
+      - "autoheal=true"
+    networks:
+      - edge_internal
+      - serve_plex_api
+      - arr_egress
+
+  abs-tract:
+    <<: *hardened
+    image: arranhs/abs-tract:v0.2.0
+    container_name: abs-tract
+    networks:
+      - serve_plex_api
+
+  plex-scan-watcher:
+    <<: *hardened
+    image: alpine:latest@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11
+    container_name: plex-scan-watcher
+    command: sh -c "apk add --no-cache inotify-tools && /watch.sh"
+    volumes:
+      # Phase 4: ./plex-scan-watcher.sh moved from abook/plex-scan-watcher.sh.
+      - ./plex-scan-watcher.sh:/watch.sh:ro
+      - /mnt/data2/media/audiobooks:/audiobooks:ro
+    env_file:
+      - ../common/secrets/.runtime/abook.env
+    environment:
+      - PLEX_URL=http://plex:32400
+      - PLEX_SECTION=11
+      - SETTLE_TIME=30
+    # arr_egress (bridge) needed for the on-boot `apk add inotify-tools`
+    # over alpine repos. serve_plex_api alone is internal:true post-6c.
+    networks:
+      - serve_plex_api
+      - arr_egress
+
+  shelfmark:
+    <<: *hardened
+    cap_add: *lsio_caps
+    image: ghcr.io/calibrain/shelfmark:v1.3.0
+    container_name: shelfmark
+    expose:
+      - "8084"
+    environment:
+      - PUID=999
+      - PGID=999
+      - TZ=Some/Region
+      - INGEST_DIR=/books
+      - FLASK_PORT=8084
+      - TORRENT_HARDLINK=true
+      - HIDE_LOCAL_AUTH=false
+      - OIDC_AUTO_REDIRECT=true
+    volumes:
+      - /mnt/app/db/shelfmark/config:/config
+      - /mnt/data2/media/ebooks/bookdrop:/books
+      - /mnt/download:/download:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=edge_internal"
+      - "traefik.http.routers.shelfmark.rule=Host(`ebookrequests.yourdomain.com`)"
+      - "traefik.http.routers.shelfmark.entrypoints=websecure"
+      - "traefik.http.routers.shelfmark.tls.certresolver=myresolver"
+      - "traefik.http.routers.shelfmark.middlewares=crowdsec@file,shelfmark-secure-headers@docker,shelfmark-ratelimit@docker"
+      - "traefik.http.services.shelfmark.loadbalancer.server.port=8084"
+      - "traefik.http.middlewares.shelfmark-secure-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.shelfmark-secure-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.shelfmark-secure-headers.headers.stsPreload=true"
+      - "traefik.http.middlewares.shelfmark-secure-headers.headers.frameDeny=true"
+      - "traefik.http.middlewares.shelfmark-secure-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.shelfmark-secure-headers.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.shelfmark-secure-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
+      - "traefik.http.middlewares.shelfmark-secure-headers.headers.permissionsPolicy=camera=(), microphone=(), geolocation=(), payment=()"
+      - "traefik.http.middlewares.shelfmark-secure-headers.headers.customResponseHeaders.X-Powered-By="
+      - "traefik.http.middlewares.shelfmark-secure-headers.headers.customResponseHeaders.Server="
+      - "traefik.http.middlewares.shelfmark-ratelimit.ratelimit.average=100"
+      - "traefik.http.middlewares.shelfmark-ratelimit.ratelimit.burst=200"
+      - "traefik.http.middlewares.shelfmark-ratelimit.ratelimit.period=1m"
+      - "autoheal=true"
+    # arr_egress (bridge) needed for OIDC discovery — shelfmark resolves
+    # auth.yourdomain.com via public DNS and round-trips through pfSense +
+    # Traefik. arr_control + edge_internal are both internal:true post-6c.
+    networks:
+      - edge_internal
+      - arr_control
+      - arr_egress
+
+  grimmory:
+    <<: *hardened
+    cap_add: *lsio_caps
+    image: grimmory/grimmory:v3.1.0
+    container_name: grimmory
+    depends_on:
+      grimmory-mariadb:
+        condition: service_healthy
+    expose:
+      - "6060"
+    env_file:
+      - ../common/secrets/.runtime/ebook.env
+    environment:
+      - USER_ID=3001
+      - GROUP_ID=3001
+      - TZ=Some/Region
+      - DATABASE_URL=jdbc:mariadb://grimmory-mariadb:3306/grimmory
+      - DATABASE_USERNAME=grimmory
+      - DISK_TYPE=LOCAL
+    volumes:
+      - /mnt/app/db/grimmory/data:/app/data
+      - /mnt/data2/media/ebooks/library:/books
+      - /mnt/data2/media/ebooks/bookdrop:/bookdrop
+    # Image ships a HEALTHCHECK as of grimmory/grimmory v3.0.x — let it own
+    # the timing + endpoint so upstream tuning flows through automatically.
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=edge_internal"
+      # Main router
+      - "traefik.http.routers.grimmory.rule=Host(`ebooks.yourdomain.com`)"
+      - "traefik.http.routers.grimmory.entrypoints=websecure"
+      - "traefik.http.routers.grimmory.tls.certresolver=myresolver"
+      - "traefik.http.routers.grimmory.middlewares=crowdsec@file,grimmory-secure-headers@docker,grimmory-ratelimit@docker"
+      - "traefik.http.services.grimmory.loadbalancer.server.port=6060"
+      # Stricter email rate-limit router
+      - "traefik.http.routers.grimmory-email.rule=Host(`ebooks.yourdomain.com`) && PathRegexp(`^/api/v[0-9]+/.*(email|send).*`)"
+      - "traefik.http.routers.grimmory-email.entrypoints=websecure"
+      - "traefik.http.routers.grimmory-email.tls.certresolver=myresolver"
+      - "traefik.http.routers.grimmory-email.priority=100"
+      - "traefik.http.routers.grimmory-email.middlewares=crowdsec@file,grimmory-secure-headers@docker,grimmory-email-ratelimit@docker"
+      - "traefik.http.routers.grimmory-email.service=grimmory"
+      # Security headers (incl. CSP for EPUB reader iframe compensation)
+      - "traefik.http.middlewares.grimmory-secure-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.grimmory-secure-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.grimmory-secure-headers.headers.stsPreload=true"
+      - "traefik.http.middlewares.grimmory-secure-headers.headers.frameDeny=true"
+      - "traefik.http.middlewares.grimmory-secure-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.grimmory-secure-headers.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.grimmory-secure-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
+      - "traefik.http.middlewares.grimmory-secure-headers.headers.permissionsPolicy=camera=(), microphone=(), geolocation=(), payment=()"
+      - "traefik.http.middlewares.grimmory-secure-headers.headers.customResponseHeaders.X-Powered-By="
+      - "traefik.http.middlewares.grimmory-secure-headers.headers.customResponseHeaders.Server="
+      - "traefik.http.middlewares.grimmory-secure-headers.headers.contentSecurityPolicy=default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; font-src 'self' data: blob:; connect-src 'self' blob: https://auth.yourdomain.com; frame-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'"
+      - "traefik.http.middlewares.grimmory-ratelimit.ratelimit.average=100"
+      - "traefik.http.middlewares.grimmory-ratelimit.ratelimit.burst=200"
+      - "traefik.http.middlewares.grimmory-ratelimit.ratelimit.period=1m"
+      - "traefik.http.middlewares.grimmory-email-ratelimit.ratelimit.average=3"
+      - "traefik.http.middlewares.grimmory-email-ratelimit.ratelimit.burst=6"
+      - "traefik.http.middlewares.grimmory-email-ratelimit.ratelimit.period=1m"
+      - "autoheal=true"
+    networks:
+      - edge_internal
+      - serve_books_grimmory_db
+      - arr_egress  # cover art / metadata fetches
+
+  grimmory-mariadb:
+    <<: *hardened
+    cap_add: *lsio_caps
+    image: lscr.io/linuxserver/mariadb:11.4.10
+    container_name: grimmory-mariadb
+    env_file:
+      - ../common/secrets/.runtime/ebook.env
+    environment:
+      - PUID=999
+      - PGID=999
+      - TZ=Some/Region
+      - MYSQL_DATABASE=grimmory
+      - MYSQL_USER=grimmory
+    volumes:
+      - /mnt/app/db/grimmory/mariadb:/config
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - serve_books_grimmory_db
+
+
+networks:
+  nas_default:
+    external: true
+  edge_internal:
+    external: true
+  arr_control:
+    external: true
+  arr_egress:
+    external: true
+  serve_plex_api:
+    external: true
+  serve_books_grimmory_db:
+    external: true

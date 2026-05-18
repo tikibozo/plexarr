@@ -1,0 +1,93 @@
+# host: server
+# project: misc — Jellyfin + small media-fetching utilities
+#
+# Phase 4 trust zone. Services migrated from:
+#   - x/    — jellyfin, reddsaver, gallery-dl
+#
+# Jellyfin is the personal/internal media server (Plex is the primary
+# user-facing one). Reddsaver/gallery-dl are scrape-and-stash utilities.
+
+x-defaults: &defaults
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging: &log
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+# Phase 5: cap_drop baseline. Consumers do `<<: *hardened` + inline
+# `cap_add: [...]` for caps they need back. `cap_drop: [ALL]` removes
+# the 14 default capabilities Docker grants.
+x-hardened: &hardened
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  logging: *log
+
+services:
+  jellyfin:
+    <<: *hardened
+    # LSIO 5-cap baseline for the s6-overlay /config init, plus
+    # NET_BIND_SERVICE because Jellyfin's DLNA stack binds UDP 1900
+    # inside the container.
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+      - NET_BIND_SERVICE
+    image: lscr.io/linuxserver/jellyfin:10.11.8
+    container_name: jellyfin
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Some/Region
+    volumes:
+      - /mnt/app/db/jellyfin:/config
+      - /mnt/data:/data
+    ports:
+      - 8096:8096
+      - 8920:8920 #optional
+      - 7359:7359/udp #optional
+      - 1900:1900/udp #optional
+    devices:
+      - /dev/dri:/dev/dri
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:8096/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    labels:
+      - "autoheal=true"
+    networks:
+      - nas_default
+
+  gallery-dl:
+    <<: *hardened
+    # One-shot CLI invoked via `docker compose run --rm gallery-dl ...`
+    # (see misc/download-saved.sh); override default restart policy so
+    # `compose up` does not loop-restart the bare entrypoint.
+    restart: "no"
+    image: mikf123/gallery-dl:v1.32.1
+    container_name: gallery-dl
+    volumes:
+      - /mnt/data/user/Download/RedditTemp:/app/data
+      # Phase 4: ./gallery-dl.json moved from x/gallery-dl.json at cutover.
+      - ./gallery-dl.json:/etc/gallery-dl/config.json:ro
+    user: "999:999"
+    entrypoint: ["gallery-dl"]
+    networks:
+      - misc_egress
+
+
+networks:
+  nas_default:
+    external: true
+  misc_egress:
+    external: true

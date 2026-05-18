@@ -1,0 +1,46 @@
+# Shared anchors for the server compose stack.
+#
+# Two-tier design:
+#   *defaults — safe everywhere; no-new-privileges, restart policy, log rotation.
+#               Applied to every service starting in Phase 0/1.
+#   *hardened — opt-in per-service after Phase 5 capability testing. Adds
+#               cap_drop: [ALL]. The service still needs to declare its
+#               cap_add inline.
+#
+# Convenience anchors:
+#   *arr-user — common UID/GID for *arr-style apps (999:999).
+#
+# Healthchecks intentionally NOT in any anchor — each *arr exposes a
+# different port and path (Sonarr 8989, Radarr 7878, Lidarr 8686, Bazarr
+# 6767, etc.) so a single template would cargo-cult the wrong default.
+# Healthcheck blocks always live at the service level.
+#
+# Usage in a project compose.yml:
+#
+#   include:
+#     - ../common/compose.common.yml
+#
+#   services:
+#     sonarr:
+#       <<: *defaults
+#       image: lscr.io/linuxserver/sonarr:4.0.10
+#       # ...
+
+x-defaults: &defaults
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+x-hardened: &hardened
+  <<: *defaults
+  cap_drop:
+    - ALL
+  # cap_add is service-specific; declare it inline at the service, NOT here.
+
+x-arr-user: &arr-user
+  user: "999:999"

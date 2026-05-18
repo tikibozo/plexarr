@@ -1,1 +1,12 @@
 CLAUDE.md
+
+# OS / editor cruft
+._*
+.DS_Store
+
+# SOPS-decrypted runtime artifacts (see common/secrets/README.md). These
+# are short-lived plaintext .env files materialized by `scripts/dco | up`
+# before each compose action — never check them in.
+common/secrets/.runtime/
+*.env
+!personal/.env
