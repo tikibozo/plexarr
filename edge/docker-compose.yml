@@ -1,0 +1,215 @@
+# host: server
+# project: edge — public ingress + auth/security perimeter
+#
+# Phase 4 trust zone. Services migrated from:
+#   - nas/         — traefik, wizarr (commented)
+#   - abook/       — plex-oidc-bridge
+#   - music/       — oauth2-proxy
+#   - sys/         — crowdsec, crowdsec-firewall-bouncer
+#
+# Anchors duplicated per-zone (compose `include:` doesn't preserve YAML
+# anchors as of v2.38.1; verified 2026-05-08).
+
+x-defaults: &defaults
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging: &log
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+# Phase 5: cap_drop baseline. Consumers do `<<: *hardened` + inline
+# `cap_add: [...]` for caps they need back. `cap_drop: [ALL]` removes
+# the 14 default capabilities Docker grants.
+x-hardened: &hardened
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  logging: *log
+
+services:
+  traefik:
+    <<: *hardened
+    # Traefik runs as root inside the container by default and binds 80
+    # and 443 directly (host port-mapping doesn't change in-container
+    # binds), so NET_BIND_SERVICE is required when default caps are
+    # dropped. DAC_OVERRIDE is needed to read the SOPS-decrypted
+    # middlewares.yml bind-mount (0600 user:user on host) since cap_drop
+    # ALL strips root's normal DAC override.
+    cap_add:
+      - NET_BIND_SERVICE
+      - DAC_OVERRIDE
+    image: traefik:v3.7.1@sha256:6b9cbca6fac42ab0075f5437d8dc1685cfd188626d8d515839ea94f8b6271c42
+    container_name: "traefik"
+    env_file:
+      - ../common/secrets/.runtime/namecheap.env
+    environment:
+      - NAMECHEAP_TTL=1
+    command:
+     #- "--log.level=DEBUG"
+      - "--api=true"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.websecure.transport.respondingTimeouts.readTimeout=24h"
+      # dashboard entrypoint: container listens on :8282 on all ifaces
+      # but the host port mapping below pins it to 10.0.0.3 (DMZ NIC)
+      # so it's invisible from WAN and from docker bridges.
+      - "--entrypoints.dashboard.address=:8282"
+      - "--certificatesresolvers.myresolver.acme.dnschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.dnschallenge.provider=namecheap"
+      - "--certificatesresolvers.myresolver.acme.caserver=https://acme-v02.api.letsencrypt.org/directory"
+      - "--certificatesresolvers.myresolver.acme.email=user@yourdomain.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      - "--accesslog=true"
+      - "--accesslog.filepath=/var/log/traefik/access.log"
+      - "--accesslog.bufferingsize=100"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "10.0.0.3:8282:8282"
+    volumes:
+      - /mnt/app/db/traefik/letsencrypt:/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /mnt/app/db/traefik/logs:/var/log/traefik
+      # Dynamic config — split source so the SOPS-managed middlewares.yml
+      # (with the CrowdSec bouncer key) materializes from the encrypted
+      # store at scripts/up time, while the dashboard router stays
+      # plaintext-committable in the repo. Phase 4: ./traefik/dynamic/
+      # moved from nas/traefik/dynamic/ as part of edge/ migration.
+      - ./traefik/dynamic/dashboard.yml:/etc/traefik/dynamic/dashboard.yml:ro
+      - ../common/secrets/.runtime/traefik-middlewares.yml:/etc/traefik/dynamic/middlewares.yml:ro
+    networks:
+      - edge_ingress
+      - edge_internal
+
+  plex-oidc-bridge:
+    <<: *hardened
+    image: ghcr.io/user/plex-oidc-bridge:0.5@sha256:c5970c2ccf19c4f279202a59981fde62f46a5afa9db384388ec12f04a8fdbb37
+    container_name: plex-oidc-bridge
+    env_file:
+      - ../common/secrets/.runtime/abook.env
+    environment:
+      - PUBLIC_URL=https://auth.yourdomain.com
+      - ALLOWED_REDIRECT_URIS=https://abook.yourdomain.com/api/auth/oidc/callback,https://abooks.yourdomain.com/api/auth/oidc/callback,https://music.yourdomain.com/oauth2/callback,https://ebookrequests.yourdomain.com/api/auth/oidc/callback,https://ebooks.yourdomain.com/oauth2-callback
+      - TRUST_PROXY_HEADERS=true
+      - PLEX_PRODUCT_NAME=Yourdomain.com
+    volumes:
+      - /mnt/app/db/plex-oidc-bridge:/app/config
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.plex-oidc-bridge.rule=Host(`auth.yourdomain.com`)"
+      - "traefik.http.routers.plex-oidc-bridge.entrypoints=websecure"
+      - "traefik.http.routers.plex-oidc-bridge.tls.certresolver=myresolver"
+      - "traefik.http.services.plex-oidc-bridge.loadbalancer.server.port=8080"
+      - "traefik.docker.network=edge_internal"
+    networks:
+      - edge_internal
+      - serve_plex_api
+      - edge_egress  # outbound to plex.tv API
+
+  oauth2-proxy:
+    <<: *hardened
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.2
+    container_name: oauth2-proxy
+    env_file:
+      - ../common/secrets/.runtime/music.env
+    environment:
+      - OAUTH2_PROXY_PROVIDER=oidc
+      - OAUTH2_PROXY_OIDC_ISSUER_URL=https://auth.yourdomain.com
+      - OAUTH2_PROXY_COOKIE_SECURE=true
+      - OAUTH2_PROXY_COOKIE_DOMAINS=.yourdomain.com
+      - OAUTH2_PROXY_SET_XAUTHREQUEST=true
+      - OAUTH2_PROXY_PASS_USER_HEADERS=true
+      - OAUTH2_PROXY_HTTP_ADDRESS=0.0.0.0:4180
+      - OAUTH2_PROXY_REVERSE_PROXY=true
+      - OAUTH2_PROXY_SKIP_PROVIDER_BUTTON=true
+      - OAUTH2_PROXY_UPSTREAMS=static://202
+      - OAUTH2_PROXY_WHITELIST_DOMAINS=.yourdomain.com
+      - OAUTH2_PROXY_AUTHENTICATED_EMAILS_FILE=/config/authenticated-emails.txt
+    volumes:
+      - /mnt/app/db/oauth2-proxy:/config:ro
+    ports:
+      - 4180:4180
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.middlewares.oauth2-proxy.forwardauth.address=http://oauth2-proxy:4180/"
+      - "traefik.http.middlewares.oauth2-proxy.forwardauth.trustForwardHeader=true"
+      - "traefik.http.middlewares.oauth2-proxy.forwardauth.authResponseHeaders=X-Auth-Request-User,X-Auth-Request-Email,X-Auth-Request-Preferred-Username,Set-Cookie"
+      - "traefik.docker.network=edge_internal"
+      # Route /oauth2/* paths (sign_in, callback, sign_out) to oauth2-proxy
+      - "traefik.http.routers.oauth2-proxy-route.rule=Host(`music.yourdomain.com`) && PathPrefix(`/oauth2`)"
+      - "traefik.http.routers.oauth2-proxy-route.entrypoints=websecure"
+      - "traefik.http.routers.oauth2-proxy-route.tls.certresolver=myresolver"
+      - "traefik.http.routers.oauth2-proxy-route.priority=100"
+      - "traefik.http.routers.oauth2-proxy-route.service=oauth2-proxy-svc"
+      - "traefik.http.services.oauth2-proxy-svc.loadbalancer.server.port=4180"
+    networks:
+      - edge_internal
+      - edge_egress  # OIDC discovery resolves auth.yourdomain.com via public DNS
+
+  crowdsec:
+    <<: *hardened
+    # crowdsec entrypoint runs as root, manages /etc/crowdsec +
+    # /var/lib/crowdsec perms (chown to PGID), then runs the agent.
+    # DAC_OVERRIDE needed to read traefik/nextcloud log bind-mounts.
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    image: crowdsecurity/crowdsec:v1.7.8@sha256:2f527c9bb8b367120eb08b82890aa912ce96bfa1ada93dda0721700e4b4e0dde
+    container_name: crowdsec
+    environment:
+      - COLLECTIONS=crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/linux crowdsecurity/nextcloud
+      - PGID=999
+    volumes:
+      - /mnt/app/db/crowdsec/config:/etc/crowdsec
+      - /mnt/app/db/crowdsec/data:/var/lib/crowdsec/data
+      - /mnt/app/db/traefik/logs:/var/log/traefik:ro
+      - /mnt/data/nextcloud/nextcloud.log:/var/log/nextcloud/nextcloud.log:ro
+      # Phase 4: ./crowdsec/ moved from sys/crowdsec/ as part of edge/ migration.
+      - ./crowdsec/acquis.yaml:/etc/crowdsec/acquis.d/traefik.yaml:ro
+      - ./crowdsec/acquis-nextcloud.yaml:/etc/crowdsec/acquis.d/nextcloud.yaml:ro
+    ports:
+      - "10.0.0.3:8180:8080"
+    networks:
+      - edge_internal
+      - edge_egress  # outbound to api.crowdsec.net blocklists
+
+  crowdsec-firewall-bouncer:
+    <<: *hardened
+    image: ghcr.io/shgew/cs-firewall-bouncer-docker:v0.0.34@sha256:ff1b5b0972ea0cfe39a4f10728effc38f6185a88b742fc4ad5a53d5dca80aca1
+    container_name: crowdsec-firewall-bouncer
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ./crowdsec/crowdsec-firewall-bouncer.yaml:/config/crowdsec-firewall-bouncer.yaml:ro
+    depends_on:
+      - crowdsec
+
+
+networks:
+  nas_default:
+    external: true
+  edge_ingress:
+    external: true
+  edge_internal:
+    external: true
+  edge_egress:
+    external: true
+  serve_plex_api:
+    external: true

@@ -1,0 +1,335 @@
+# host: server
+# project: process — post-processing, analytics, *arr-tooling
+#
+# Phase 4 trust zone. Services migrated from:
+#   - media/  — tdarr, whisper, unpackerr, maintainerr, kometa, recyclarr,
+#               fetcharr, tautulli, kometa-ai (commented)
+#   - rpt/    — tracearr + tracearr-db (timescale) + tracearr-redis
+#   - sys/    — checkrr
+
+x-defaults: &defaults
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging: &log
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+# Phase 5: cap_drop baseline. Consumers do `<<: *hardened` + inline
+# `cap_add: [...]` for caps they need back. `cap_drop: [ALL]` removes
+# the 14 default capabilities Docker grants.
+x-hardened: &hardened
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  logging: *log
+
+# Phase 5: LSIO/PUID-based containers need these 5 caps to chown +
+# drop privileges at startup.
+x-lsio-caps: &lsio_caps
+  - CHOWN
+  - FOWNER
+  - DAC_OVERRIDE
+  - SETUID
+  - SETGID
+
+services:
+  tdarr:
+    <<: *hardened
+    cap_add: *lsio_caps
+    image: ghcr.io/haveagitgat/tdarr:latest@sha256:4dd21e8aa92f10601c35828566ddaadbb6d9d4335d004411ee69f1e02714d1c8
+    container_name: tdarr
+    environment:
+      - PUID=999
+      - PGID=999
+      - TZ=Some/Region
+      - UMASK_SET=002
+      - serverIP=0.0.0.0
+      - serverPort=8266
+      - webUIPort=8265
+      - internalNode=true
+      - nodeName=server
+    volumes:
+      - /mnt/app/db/tdarr/server:/app/server
+      - /mnt/app/db/tdarr/configs:/app/configs
+      - /mnt/app/db/tdarr/logs:/app/logs
+      - /mnt/download/transcode/tdarr:/temp
+      - /mnt/data/media:/media
+      - /mnt/data2/media:/media2
+      - /mnt/data/user/Download:/download
+    ports:
+      - 8265:8265 # webUI port
+      # 8266 (server), 8267-8268 (internal node ports) intentionally NOT
+      # host-bound — internalNode=true serves all transcoding internally.
+    devices:
+      - /dev/dri:/dev/dri
+    networks:
+      - arr_egress
+
+  whisper:
+    <<: *hardened
+    image: onerahmet/openai-whisper-asr-webservice:latest@sha256:03b402335881cdab2e4939b24620809df8d6ceec3bf2712217d41c8761a0f5d4
+    container_name: whisper
+    env_file:
+      - ../common/secrets/.runtime/media.env
+    environment:
+      - ASR_MODEL=distil-large-v3
+      - ASR_ENGINE=whisperx
+      - ASR_DEVICE=cpu
+      - ASR_QUANTIZATION=float32
+    ports:
+      - 9001:9000
+    networks:
+      - arr_control
+      - arr_egress
+
+  unpackerr:
+    <<: *hardened
+    image: golift/unpackerr:0.15.2
+    container_name: unpackerr
+    user: 999:999
+    env_file:
+      - ../common/secrets/.runtime/media.env
+    environment:
+      - TZ=Some/Region
+      - UN_LOG_FILE=/logs/unpackerr.log
+      - UN_LOG_QUEUES=20m
+      - UN_SONARR_0_URL=http://sonarr:8989
+      - UN_SONARR_0_PROTOCOLS=torrent,usenet
+      - UN_SONARR_1_URL=http://sonarr4k:9090
+      - UN_SONARR_1_PROTOCOLS=torrent,usenet
+      - UN_RADARR_0_URL=http://radarr:7878
+      - UN_RADARR_0_PROTOCOLS=torrent,usenet
+      - UN_RADARR_1_URL=http://radarr4k:7979
+      - UN_RADARR_1_PROTOCOLS=torrent,usenet
+      - UN_LIDARR_0_URL=http://lidarr:8686
+      - UN_LIDARR_0_PROTOCOLS=torrent,usenet
+    volumes:
+      - /mnt/download:/download
+      - /mnt/app/db/unpackerr/logs:/logs
+    networks:
+      - arr_control
+
+  maintainerr:
+    <<: *hardened
+    image: ghcr.io/jorenn92/maintainerr:main@sha256:b4342e057e089ee9f8cdacd5c7139ffb8ccb5dc2991d939cee678ccbbad2cd5b
+    container_name: maintainerr
+    user: 999:999
+    volumes:
+      - /mnt/app/db/maintainerr:/opt/data
+      - /mnt/data/media:/media
+      - /mnt/data2/media:/media2
+    environment:
+      - TZ=Some/Region
+    ports:
+      - 6246:6246
+    networks:
+      - arr_control
+      - serve_plex_api
+      - arr_egress
+
+  kometa:
+    <<: *hardened
+    # cap_drop ALL strips root's DAC bypass; kometa rotates logs in
+    # /config/logs which is owned by plex:plex 0755 on the host, so root
+    # without DAC_OVERRIDE cannot create/rename files there. Silently
+    # failed every daily run from 2026-05-15 (Phase 6c recreate) through
+    # 2026-05-18 with `PermissionError: '/config/logs/meta-9.log'`.
+    # Same class of bug as the rclone DAC_READ_SEARCH fix, but kometa
+    # writes (rotation) so it needs DAC_OVERRIDE not the read-only variant.
+    cap_add:
+      - DAC_OVERRIDE
+    image: kometateam/kometa:latest@sha256:b265e952fcc3931ac378601faf9e6e0d90bee104fc70d9002f59c8678bf00b87
+    container_name: kometa
+    environment:
+      - KOMETA_CONFIG=/config/config.yml
+      - KOMETA_TIMES=10:00
+    volumes:
+      - /mnt/app/db/kometa:/config
+      # Phase 4: ./kometa/ moved from media/kometa/ (overlay assets).
+      - ./kometa/r:/r
+      - ./kometa/rc:/rc
+      - ./kometa/rc:/rf
+      - ./kometa/ov:/ov
+    networks:
+      - arr_control
+      - serve_plex_api
+      - arr_egress
+
+  recyclarr:
+    <<: *hardened
+    image: ghcr.io/recyclarr/recyclarr:8.6.0
+    container_name: recyclarr
+    environment:
+      - TZ=Some/Region
+    user: 999:999
+    volumes:
+      - /mnt/app/db/recyclarr:/config
+    networks:
+      - arr_control
+      - arr_egress  # TRaSH-Guides repo + GitHub
+
+  fetcharr:
+    <<: *hardened
+    image: egg82/fetcharr:latest@sha256:ee683aa3478929e2bfdaa5f2ce7dd5378079a95b8f250543afd68e6df3b342bd
+    container_name: fetcharr
+    user: 999:999
+    env_file:
+      - ../common/secrets/.runtime/media.env
+    environment:
+      - TZ=Some/Region
+      - LOG_MODE=info
+      - DATA_DIR=/data
+      - CACHE_DIR=/cache
+      - SEARCH_AMOUNT=5
+      - SEARCH_INTERVAL=6hours
+      - MONITORED_ONLY=true
+      - MISSING_ONLY=false
+      - USE_CUTOFF=true
+      - RADARR_0_URL=http://radarr:7878
+      - SONARR_0_URL=http://sonarr:8989
+    volumes:
+      - /mnt/app/db/fetcharr/data:/data
+      - /mnt/app/db/fetcharr/cache:/cache
+    networks:
+      - arr_control
+
+  tautulli:
+    <<: *hardened
+    # Tautulli image drops to the `tautulli` user via PUID/PGID; needs
+    # SETUID/SETGID. Bind mount perms benefit from DAC_OVERRIDE.
+    cap_add:
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+    image: tautulli/tautulli:v2.17.1
+    container_name: tautulli
+    environment:
+      - PUID=999
+      - PGID=999
+      - TZ=Some/Region
+    volumes:
+      - /mnt/app/db/tautulli/data:/config
+    ports:
+      - 8181:8181
+    networks:
+      - serve_plex_api
+      - arr_egress  # plex.tv metadata + notifications
+
+  checkrr:
+    <<: *hardened
+    image: aetaric/checkrr:3.6.1
+    container_name: checkrr
+    ports:
+      - 8585:8585/tcp
+    volumes:
+      - /mnt/app/db/checkrr/checkrr.yaml:/etc/checkrr.yaml
+      - /mnt/app/db/checkrr:/config
+      - /mnt/data/media:/media
+      - /mnt/data2/media:/media2
+    networks:
+      - arr_control
+      - arr_egress
+
+  # Tracearr stack — Plex telemetry/analytics. Has its own internal
+  # network for app↔db↔redis. Only `tracearr` itself needs outbound
+  # network membership (receives Plex webhooks).
+  tracearr:
+    <<: *hardened
+    image: ghcr.io/connorgallopo/tracearr:1.4.28
+    container_name: tracearr
+    ports:
+      - "${PORT:-3000}:3000"
+    env_file:
+      - ../common/secrets/.runtime/rpt.env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - TZ=Some/Region
+      - DATABASE_URL=postgres://tracearr:${DB_PASSWORD:-tracearr}@tracearr-db:5432/tracearr
+      - REDIS_URL=redis://tracearr-redis:6379
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      tracearr-db:
+        condition: service_healthy
+      tracearr-redis:
+        condition: service_healthy
+    labels:
+      - "autoheal=true"
+    networks:
+      - process_tracearr_internal
+      - serve_plex_api  # Plex sends webhooks here
+      - arr_egress
+
+  tracearr-db:
+    <<: *hardened
+    # Spilo entrypoint runs as root, manages /home/postgres/pgdata
+    # permissions, then drops to postgres user.
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    image: timescale/timescaledb-ha:pg18.1-ts2.25.0
+    container_name: tracearr-db
+    shm_size: 512mb
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    command: postgres -c timescaledb.max_tuples_decompressed_per_dml_transaction=0 -c max_locks_per_transaction=4096 -c timescaledb.telemetry_level=off
+    environment:
+      - POSTGRES_USER=tracearr
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-tracearr}
+      - POSTGRES_DB=tracearr
+    volumes:
+      - /mnt/app/db/tracearr/data:/home/postgres/pgdata/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tracearr"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - process_tracearr_internal
+
+  tracearr-redis:
+    <<: *hardened
+    # redis-alpine entrypoint uses `su-exec` to drop from root to redis user
+    # (SETUID/SETGID), and the AOF temp-file write fails without
+    # DAC_OVERRIDE on the host bind mount.
+    cap_add:
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+    image: redis:8-alpine
+    container_name: tracearr-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - /mnt/app/db/tracearr/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - process_tracearr_internal
+
+
+networks:
+  nas_default:
+    external: true
+  arr_control:
+    external: true
+  arr_egress:
+    external: true
+  serve_plex_api:
+    external: true
+  process_tracearr_internal:
+    external: true

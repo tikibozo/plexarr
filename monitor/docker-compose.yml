@@ -1,0 +1,477 @@
+# host: server
+# project: monitor — observability + ops infrastructure
+#
+# Phase 4 trust zone. Services migrated from:
+#   - sys/      — postfix, rclone, uptime-kuma, autoheal
+#   - monproxy/ — zabbix-proxy, mysql-server (renamed monitor-mysql), zabbix-agent2
+#   - media/    — organizr, homepage, socket-proxy-homepage
+
+x-defaults: &defaults
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging: &log
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+# Phase 5: cap_drop baseline. Consumers do `<<: *hardened` + inline
+# `cap_add: [...]` for caps they need back. `cap_drop: [ALL]` removes
+# the 14 default capabilities Docker grants.
+x-hardened: &hardened
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  logging: *log
+
+services:
+  postfix:
+    <<: *hardened
+    # Postfix master/qmgr/smtpd drop to the postfix user via setuid.
+    # NET_BIND_SERVICE for port 25 inside container.
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+      - NET_BIND_SERVICE
+    image: boky/postfix:latest@sha256:aafc772384232497bed875e1eb66b4d3e54ba1ebc86e2e185a6dc1dbc48182ef
+    container_name: postfix
+    ports:
+      - 25:25/tcp
+    env_file:
+      - ../common/secrets/.runtime/sys-postfix.env
+    environment:
+      # Rewrite From: header for ANY submitting client (not just trusted) so
+      # sender_canonical_maps applies to messages relayed in via SMTP from
+      # the host MTA. Without this, Office 365 rejects with `SendAsDenied`
+      # because the authenticated identity (postfix@yourdomain.com) cannot
+      # SendAs the host's local user.
+      POSTFIX_local_header_rewrite_clients: "static:all"
+    volumes:
+      - /mnt/app/db/postfix/queue:/var/spool/postfix
+      # Phase 4: ./postfix/ moved from sys/postfix/ as part of monitor/ migration.
+      - ./postfix/sender_canonical_maps:/etc/postfix/sender_canonical_maps:ro
+    networks:
+      - mon_egress
+      # edge_internal so Nextcloud, Grimmory, and other email-senders can
+      # reach postfix:25 over a shared network. Without this they'd need
+      # host-port (server.mylocal:25) which is clunkier.
+      - edge_internal
+
+  rclone:
+    <<: *hardened
+    # Phase 5: ran as `rcd` (remote control daemon) only — no in-container
+    # FUSE mounts, so SYS_ADMIN + SETPCAP dropped. /dev/fuse still bound
+    # in case a future RC API call invokes a mount; no FUSE caps granted.
+    image: rclone/rclone:1.74.1
+    container_name: rclone
+    cap_add:
+      # cap_drop:ALL stripped root's DAC bypass, so the backup failed on
+      # 0700/0750 source trees (user home, nextcloud www-data 0770).
+      # Read-only backup: restore the minimal read/traverse bypass only,
+      # NOT DAC_OVERRIDE (which would also grant write bypass).
+      - DAC_READ_SEARCH
+    ports:
+      # Bind to the DMZ NIC only. Reachable from OpenVPN clients via
+      # 10.0.0.3:5572; pfSense doesn't WAN-forward 5572.
+      - 10.0.0.3:5572:5572/tcp
+    env_file:
+      - ../common/secrets/.runtime/sys-rclone.env
+    volumes:
+      - /mnt/app/db/rclone:/config/rclone
+      - /mnt/app/db/rclone:/logs
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      - /dev/fuse:/dev/fuse
+      - /mnt/data:/data
+      - /mnt/data2:/data2
+      - /mnt/app:/opt
+      - /tmp/rclone:/htmp
+    command: rcd -v --rc-web-gui --rc-web-gui-no-open-browser --rc-addr :5572 --transfers=3 --copy-links
+    networks:
+      - mon_egress
+
+  uptime-kuma:
+    <<: *hardened
+    # Image's entrypoint drops to a non-root user; SETUID/SETGID required.
+    # SQLite db writes need DAC_OVERRIDE because the bind mount's perms
+    # don't always match the in-container uid after the privilege drop.
+    # NET_RAW required for ICMP monitor type (raw socket for ping).
+    cap_add:
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - NET_RAW
+    image: louislam/uptime-kuma:2
+    container_name: uptime-kuma
+    ports:
+      - "10.0.0.3:3011:3001"
+    volumes:
+      - /mnt/app/db/uptime-kuma:/app/data
+    networks:
+      - mon_internal
+      - mon_egress
+      - edge_internal
+
+  # Global autoheal sidecar. Restarts containers whose docker healthcheck
+  # reports `unhealthy` for AUTOHEAL_INTERVAL seconds. Opt-in: only services
+  # carrying label `autoheal=true` are watched. Excluded by design: plex
+  # (slow startup, stateful), gluetun (recreate kills child net namespace),
+  # qbittorrent (state, ordering quirk), traefik (manual intervention
+  # preferred), tdarr (long-running jobs).
+  autoheal:
+    <<: *hardened
+    image: willfarrell/autoheal:1.2.0@sha256:31f580ef0279eaced5b38d631b08c474d70d8403c1c2fdd6ddcf2e879d5f3f7c
+    container_name: autoheal
+    environment:
+      - AUTOHEAL_CONTAINER_LABEL=autoheal
+      - AUTOHEAL_INTERVAL=30
+      - AUTOHEAL_START_PERIOD=60
+      - DOCKER_SOCK=/var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    # autoheal talks to docker daemon via socket only — no network membership needed.
+
+  # Zabbix proxy (forwards server metrics to server's zabbix-server).
+  # Note: NNP intentionally NOT set on this service. Adding it caused ICMP
+  # host-availability monitoring (server, ruckusAP1, c1000) to fail.
+  # fping has cap_net_raw=ep file caps which NNP appears to break. The
+  # x-defaults anchor would set NNP, so we override security_opt: [].
+  zabbix-proxy:
+    <<: *hardened
+    # NNP-off retained — proxy invokes /usr/bin/fping (setuid bit) for
+    # ICMP host-availability monitors. NNP would block the setuid jump
+    # and ICMP host availability would silently stop reporting.
+    security_opt: []
+    # gosu drop to zabbix user + fping ICMP + secrets file reads.
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+      - NET_RAW
+    image: zabbix/zabbix-proxy-mysql:ubuntu-latest
+    container_name: zabbix-proxy
+    ports:
+      - 10052:10051
+    networks:
+      zabbix:
+        ipv4_address: 172.220.0.5
+      mon_internal: {}
+    environment:
+      - ZBX_PROXYMODE=0
+      - ZBX_HOSTNAME=server-proxy
+      - ZBX_SERVER_HOST=10.100.0.2:10051
+      - ZBX_STATSALLOWEDIP=10.100.0.2,127.0.0.1
+      - DB_SERVER_HOST=172.220.0.6
+      - DB_SERVER_PORT=3306
+      - MYSQL_USER_FILE=/run/secrets/MYSQL_USER
+      - MYSQL_PASSWORD_FILE=/run/secrets/MYSQL_PASSWORD
+      - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/MYSQL_ROOT_PASSWORD
+      - MYSQL_DATABASE=zabbix
+      - ZBX_CACHESIZE=256M
+    secrets:
+      - MYSQL_USER
+      - MYSQL_PASSWORD
+      - MYSQL_ROOT_USER
+      - MYSQL_ROOT_PASSWORD
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      # Phase 4: ./proxy-config/ moved from monproxy/proxy-config/.
+      - ./proxy-config/zabbix_proxy_db_tls.conf:/etc/zabbix/zabbix_proxy_db_tls.conf:ro
+
+  # Phase 4: renamed from `mysql-server` for clarity within the new
+  # multi-DB monitor zone.
+  monitor-mysql:
+    <<: *hardened
+    # Pinned to 8.0 — 8.4 removed the `--skip-character-set-client-handshake`
+    # and `--default-authentication-plugin` options in the command block below,
+    # and disables the `mysql_native_password` auth plugin by default. A real
+    # 8.4 upgrade needs config + auth-plugin migration first; see PR #23 fallout.
+    image: mysql:8.0
+    container_name: monitor-mysql
+    # SYS_NICE for io_uring scheduling priority; LSIO 5-cap for the
+    # gosu-style drop to the mysql user + initdb chown.
+    cap_add:
+      - SYS_NICE
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    ports:
+      - 3306:3306
+    networks:
+      zabbix:
+        ipv4_address: 172.220.0.6
+    command:
+      - mysqld
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_bin
+      - --skip-character-set-client-handshake
+      - --default-authentication-plugin=mysql_native_password
+      - --disable-log-bin
+    volumes:
+      - /mnt/app/db/zabbixproxy/var/lib/mysql:/var/lib/mysql:rw
+    env_file:
+      # Phase 4: ./env_vars/ moved from monproxy/env_vars/.
+      - ./env_vars/.env_db_mysql
+    secrets:
+      - MYSQL_USER
+      - MYSQL_PASSWORD
+      - MYSQL_ROOT_USER
+      - MYSQL_ROOT_PASSWORD
+
+  # Note: NNP intentionally NOT set on zabbix-agent2. Privileged for host
+  # inspection; the x-defaults anchor would set NNP via security_opt, so
+  # we override to empty.
+  zabbix-agent2:
+    <<: *hardened
+    # NNP-off must be retained — agent uses /usr/bin/fping (setuid bit)
+    # for ICMP host-availability monitors. NNP breaks the setuid jump
+    # and ICMP items stop reporting. See feedback memory
+    # `zabbix_proxy_nnp_breaks_icmp`.
+    security_opt: []
+    # Phase 5: replaced `privileged: true` with an explicit cap set.
+    # - SYS_PTRACE: agent discovers processes via /proc/*/status
+    # - DAC_READ_SEARCH: reads host /proc, /sys, /var/log over /hostfs
+    # - DAC_OVERRIDE: opens files across host UIDs (containers/etc)
+    # - NET_ADMIN + NET_RAW: ICMP fping monitors + raw socket
+    # - SYS_RAWIO: hwmon/sensors items
+    # - SETUID/SETGID: image-internal drop from root to zabbix user
+    # If any item breaks after this change, restore `privileged: true`
+    # temporarily and re-tighten with that item's strace output.
+    cap_add:
+      - SYS_PTRACE
+      - DAC_READ_SEARCH
+      - DAC_OVERRIDE
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_RAWIO
+      - SETUID
+      - SETGID
+    image: zabbix/zabbix-agent2:alpine-latest
+    container_name: zabbix-agent2
+    environment:
+      - ZBX_HOSTNAME=server
+      - ZBX_SERVER_HOST=172.220.0.1
+      - ZBX_SERVER_PORT=10052
+      - ZBX_DEBUGLEVEL=3
+    ports:
+      - 10050:10050/tcp
+      - 10051:10051/tcp
+      - 31999:31999/tcp
+    networks:
+      - zabbix
+    volumes:
+      - /mnt/app/db/zabbixagent2/db:/var/lib/zabbix/buffer
+      - /mnt/app/db/zabbixagent2/agentd.d:/etc/zabbix/zabbix_agentd.d
+      - /mnt/app/db/zabbixagent2/sudoers:/etc/sudoers
+      - /mnt/app/home/user/compose/zabbix/agentscripts:/agentscripts:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/log:/var/log:ro
+      - /mnt:/hostfs/mnt:ro
+      - /mnt/app:/hostfs/mnt/app:ro
+      - /mnt/data:/hostfs/mnt/data:ro
+      - /mnt/download:/hostfs/mnt/download:ro
+    group_add:
+      - "999" # add zabbix user to docker group within container
+
+  organizr:
+    <<: *hardened
+    # LSIO s6-overlay init runs chown/chmod across /config to normalise
+    # perms on the host bind mount; needs CHOWN/FOWNER/DAC_OVERRIDE.
+    # SETUID/SETGID required to drop to the `abc` user before app start.
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    image: organizr/organizr:latest@sha256:1ce319d73cdfd2666ec7ef21e15907531fabc8a6f333c4ac61e2b2e9d2d162f5
+    container_name: organizr
+    ports:
+      - 9393:80
+    volumes:
+      - /mnt/app/db/organizr:/config
+    environment:
+      - PUID=999
+      - PGID=999
+      - TZ=Some/Region
+    # mon_egress (bridge) added so Docker can DNAT host:9393 → container.
+    networks:
+      - mon_egress
+      - mon_internal
+      - edge_internal
+
+  homepage:
+    <<: *hardened
+    image: ghcr.io/gethomepage/homepage:v1.13.1
+    container_name: homepage
+    depends_on:
+      - socket-proxy-homepage
+    environment:
+      - HOMEPAGE_ALLOWED_HOSTS=server.mylocal:3001
+      - HOMEPAGE_FILE_SHELFMARK_COOKIE=/app/config/.shelfmark-cookie
+      # Talk to the docker API via the socket-proxy (no direct socket mount).
+      # The proxy is restricted to read-only CONTAINERS + INFO endpoints.
+      - DOCKER_HOST=tcp://socket-proxy-homepage:2375
+    ports:
+      - 3001:3000
+    volumes:
+      - /mnt/app/db/homepage:/app/config
+      - /mnt/download:/download:ro
+      - /mnt/data/media:/data/media:ro
+      - /mnt/data2/media:/data2/media:ro
+      - /mnt/transcode:/transcode:ro
+    # mon_egress (bridge) added so Docker can DNAT host:3001 → container.
+    # Internal-only network sets lose port-publishing NAT.
+    networks:
+      - mon_egress
+      - mon_internal
+      - edge_internal
+
+  # Read-only docker API proxy for Homepage. Replaces the raw /var/run/docker.sock
+  # mount Homepage previously had — narrows what an attacker who compromised
+  # Homepage could enumerate (no images, no networks, no volumes, no env-var
+  # leakage from container inspect).
+  socket-proxy-homepage:
+    <<: *hardened
+    image: lscr.io/linuxserver/socket-proxy:3.2.19
+    container_name: socket-proxy-homepage
+    read_only: true
+    tmpfs:
+      - /run
+    environment:
+      - CONTAINERS=1
+      - INFO=1
+      - IMAGES=0
+      - NETWORKS=0
+      - VOLUMES=0
+      - SERVICES=0
+      - TASKS=0
+      - SECRETS=0
+      - CONFIGS=0
+      - PLUGINS=0
+      - SYSTEM=0
+      - DISTRIBUTION=0
+      - SESSION=0
+      - SWARM=0
+      - NODES=0
+      - EVENTS=0
+      - PING=1
+      - VERSION=1
+      - POST=0
+      - DELETE=0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - mon_internal
+
+  # Real-time docker log viewer. Bound to the DMZ NIC only (10.0.0.3) so
+  # the UI is reachable over LAN/OpenVPN but not WAN.
+  dozzle:
+    <<: *hardened
+    image: amir20/dozzle:latest@sha256:1cc972250626553009ddacbdf1f5725b681cdcbabe551fec69cd728882ffbc58
+    container_name: dozzle
+    environment:
+      - DOZZLE_NO_ANALYTICS=true
+      - DOZZLE_HOSTNAME=server
+      # Talk to the docker API via a dedicated read-only socket-proxy.
+      # The proxy exposes LOGS + EVENTS + CONTAINERS + INFO only — dozzle
+      # cannot create, modify, or destroy anything.
+      - DOCKER_HOST=tcp://socket-proxy-dozzle:2375
+    ports:
+      - "10.0.0.3:8090:8080"
+    depends_on:
+      - socket-proxy-dozzle
+    healthcheck:
+      test: ["CMD", "/dozzle", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "autoheal=true"
+    networks:
+      - mon_internal       # reach socket-proxy-dozzle
+      - mon_egress         # port-publishing NAT + the (disabled) analytics check
+
+  # Dedicated read-only docker API proxy for Dozzle. Separate from
+  # socket-proxy-homepage so the two consumers have isolated trust
+  # surfaces — homepage doesn't get LOGS, dozzle doesn't get to ask
+  # questions homepage doesn't.
+  socket-proxy-dozzle:
+    <<: *hardened
+    image: lscr.io/linuxserver/socket-proxy:3.2.19
+    container_name: socket-proxy-dozzle
+    read_only: true
+    tmpfs:
+      - /run
+    environment:
+      - CONTAINERS=1
+      - INFO=1
+      - LOGS=1
+      - EVENTS=1
+      - PING=1
+      - VERSION=1
+      - IMAGES=0
+      - NETWORKS=0
+      - VOLUMES=0
+      - SERVICES=0
+      - TASKS=0
+      - SECRETS=0
+      - CONFIGS=0
+      - PLUGINS=0
+      - SYSTEM=0
+      - DISTRIBUTION=0
+      - SESSION=0
+      - SWARM=0
+      - NODES=0
+      - POST=0
+      - DELETE=0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - mon_internal
+
+
+secrets:
+  MYSQL_USER:
+    file: ./env_vars/.MYSQL_USER
+  MYSQL_PASSWORD:
+    file: ./env_vars/.MYSQL_PASSWORD
+  MYSQL_ROOT_USER:
+    file: ./env_vars/.MYSQL_ROOT_USER
+  MYSQL_ROOT_PASSWORD:
+    file: ./env_vars/.MYSQL_ROOT_PASSWORD
+
+
+networks:
+  # Phase 4 external networks (created by ensure_external_networks).
+  # Phase 6a (2026-05-11): mon_internal flipped from bridge to internal:true.
+  # nas_default dropped — monitor zone is the first to retire the safety net.
+  mon_internal:
+    external: true
+  mon_egress:
+    external: true
+  edge_internal:
+    external: true
+
+  # zabbix is a project-internal network with custom IPAM. The 172.220.0.0/16
+  # subnet is referenced inline by zabbix-proxy (172.220.0.5), monitor-mysql
+  # (172.220.0.6), and zabbix-agent2 (which uses the 172.220.0.1 gateway as
+  # ZBX_SERVER_HOST). Stays project-scoped — compose prefixes the network
+  # name with the project (becomes `monitor_zabbix`).
+  zabbix:
+    ipam:
+      config:
+        - subnet: 172.220.0.0/16
+          gateway: 172.220.0.1

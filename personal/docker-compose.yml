@@ -1,0 +1,415 @@
+# host: server
+# project: personal — private data: Immich, Nextcloud, Vikunja
+#
+# Phase 4 trust zone — HIGH risk class (private data). Per-app DB nets
+# are internal: true at create time. Each app dual-homed on edge_internal
+# (Traefik ingress) + personal_<app>_db (private DB) + personal_egress
+# (outbound to image registries, plex.tv, etc.).
+#
+# Services migrated from:
+#   - photo/  — immich-server, immich-machine-learning, redis, database,
+#               power-tools (renamed → immich-power-tools service-key)
+#   - files/  — nextcloud, cron, clamav, elasticsearch, db, redis, vikunja
+#
+# Named volumes converted to bind mounts (Phase 4 requirement):
+#   files/nextcloud_html  → /mnt/app/db/nextcloud/html
+#   files/clamav_data     → /mnt/app/db/nextcloud/clamav-data
+#   photo/model-cache     → /mnt/app/db/immich/model-cache
+#   photo/power-tools-data → /mnt/app/db/immich/power-tools-data
+
+# Override the project name to keep image namespacing stable across the
+# rename (photo/ used `name: immich`).
+name: personal
+
+x-defaults: &defaults
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging: &log
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+# Phase 5: cap_drop baseline. Consumers do `<<: *hardened` + inline
+# `cap_add: [...]` for caps they need back. `cap_drop: [ALL]` removes
+# the 14 default capabilities Docker grants.
+x-hardened: &hardened
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  logging: *log
+
+services:
+  # ---- Immich stack ----
+  immich-server:
+    <<: *hardened
+    image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
+    container_name: immich_server
+    volumes:
+      - ${UPLOAD_LOCATION}:/data
+      - /mnt/data2/media/photos/personalarchive:/photos
+      - /etc/localtime:/etc/localtime:ro
+    env_file:
+      - .env
+      - ../common/secrets/.runtime/photo.env
+    environment:
+      # Service-keys `database` and `redis` are taken by Nextcloud's services
+      # in this combined project (`db` and `redis` keys are claimed for
+      # Nextcloud-config-baked-in DNS). Explicit hostnames point Immich at
+      # its own DB/Redis via container_name.
+      - DB_HOSTNAME=immich_postgres
+      - REDIS_HOSTNAME=immich_redis
+    ports:
+      - '2283:2283'
+    depends_on:
+      - immich-redis
+      - immich-database
+    healthcheck:
+      disable: false
+    labels:
+      - "autoheal=true"
+    networks:
+      - personal_immich_db
+      - personal_egress
+      - edge_internal
+
+  immich-machine-learning:
+    <<: *hardened
+    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}
+    container_name: immich_machine_learning
+    volumes:
+      - /mnt/app/db/immich/model-cache:/cache
+    env_file:
+      - .env
+      - ../common/secrets/.runtime/photo.env
+    environment:
+      - DB_HOSTNAME=immich_postgres
+      - REDIS_HOSTNAME=immich_redis
+    healthcheck:
+      disable: false
+    labels:
+      - "autoheal=true"
+    networks:
+      - personal_immich_db
+      - personal_egress
+
+  immich-redis:
+    <<: *hardened
+    # valkey entrypoint runs as root, chowns /data, drops to valkey
+    # user via su-exec.
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    image: docker.io/valkey/valkey:9@sha256:8436e10bc65c94886a91d4415b6a6dfa9cb5a306fb3b996e5bb67cd2b4854193
+    container_name: immich_redis
+    healthcheck:
+      test: redis-cli ping || exit 1
+    networks:
+      - personal_immich_db
+
+  immich-database:
+    <<: *hardened
+    # postgres entrypoint runs as root, chowns /var/lib/postgresql/data,
+    # drops to postgres user via gosu.
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23
+    container_name: immich_postgres
+    env_file:
+      - ../common/secrets/.runtime/photo.env
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_DB: ${DB_DATABASE_NAME}
+      POSTGRES_INITDB_ARGS: '--data-checksums'
+    volumes:
+      - ${DB_DATA_LOCATION}:/var/lib/postgresql/data
+    shm_size: 128mb
+    networks:
+      - personal_immich_db
+
+  immich-power-tools:
+    <<: *hardened
+    image: ghcr.io/immich-power-tools/immich-power-tools:0.21.3
+    container_name: immich_power_tools
+    env_file:
+      - .env
+      - ../common/secrets/.runtime/photo.env
+    environment:
+      IMMICH_URL: http://immich-server:2283
+      DB_HOST: immich_postgres
+      DB_PORT: '5432'
+    ports:
+      - '8001:3000'
+    volumes:
+      - /mnt/app/db/immich/power-tools-data:/app/data
+    depends_on:
+      - immich-server
+      - immich-database
+    # personal_egress (bridge) added so Docker can DNAT host:8001 →
+    # container. personal_immich_db alone is internal:true.
+    networks:
+      - personal_immich_db
+      - personal_egress
+
+  # ---- Nextcloud stack ----
+  nextcloud:
+    <<: *hardened
+    # Apache entrypoint runs as root, drops to www-data; binds port 80
+    # inside the container.
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+      - NET_BIND_SERVICE
+    image: nextcloud:33.0.3
+    container_name: nextcloud
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ../common/secrets/.runtime/files.env
+    environment:
+      # POSTGRES_HOST/REDIS_HOST must match the service-keys below (db/redis)
+      # because Nextcloud's config.php was written with those names at initial
+      # install and ignores env on subsequent boots.
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=nextcloud
+      - POSTGRES_USER=nextcloud
+      - REDIS_HOST=redis
+      - NEXTCLOUD_TRUSTED_DOMAINS=files.yourdomain.com
+      - OVERWRITEPROTOCOL=https
+      - OVERWRITECLIURL=https://files.yourdomain.com
+      - TRUSTED_PROXIES=172.16.0.0/12
+      - NEXTCLOUD_INIT_HTACCESS=true
+      - PHP_MEMORY_LIMIT=512M
+      - PHP_UPLOAD_LIMIT=16G
+      - TZ=Some/Region
+    volumes:
+      # Phase 4: nextcloud_html named volume → bind mount.
+      - /mnt/app/db/nextcloud/html:/var/www/html
+      - /mnt/app/db/nextcloud/config:/var/www/html/config
+      - /mnt/app/db/nextcloud/custom_apps:/var/www/html/custom_apps
+      - /mnt/app/db/nextcloud/themes:/var/www/html/themes
+      - /mnt/data/nextcloud:/var/www/html/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=edge_internal"
+      - "traefik.http.routers.nextcloud.rule=Host(`files.yourdomain.com`)"
+      - "traefik.http.routers.nextcloud.entrypoints=websecure"
+      - "traefik.http.routers.nextcloud.tls.certresolver=myresolver"
+      - "traefik.http.routers.nextcloud.middlewares=crowdsec@file,nc-secure-headers@docker,nc-ratelimit@docker"
+      - "traefik.http.services.nextcloud.loadbalancer.server.port=80"
+      # Trusted LAN/VPN — skip ratelimit (and crowdsec) for internal clients
+      - "traefik.http.routers.nextcloud-trusted.rule=Host(`files.yourdomain.com`) && (ClientIP(`192.168.1.0/24`) || ClientIP(`192.168.2.0/24`))"
+      - "traefik.http.routers.nextcloud-trusted.entrypoints=websecure"
+      - "traefik.http.routers.nextcloud-trusted.tls.certresolver=myresolver"
+      - "traefik.http.routers.nextcloud-trusted.priority=100"
+      - "traefik.http.routers.nextcloud-trusted.middlewares=nc-secure-headers@docker"
+      - "traefik.http.routers.nextcloud-trusted.service=nextcloud"
+      # Security headers
+      - "traefik.http.middlewares.nc-secure-headers.headers.hostsProxyHeaders=X-Forwarded-Host"
+      - "traefik.http.middlewares.nc-secure-headers.headers.referrerPolicy=same-origin"
+      - "traefik.http.middlewares.nc-secure-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.nc-secure-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.nc-secure-headers.headers.stsPreload=true"
+      - "traefik.http.middlewares.nc-secure-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.nc-secure-headers.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.nc-secure-headers.headers.permissionsPolicy=camera=(), microphone=(), geolocation=(), payment=()"
+      - "traefik.http.middlewares.nc-secure-headers.headers.customResponseHeaders.X-Powered-By="
+      - "traefik.http.middlewares.nc-secure-headers.headers.customResponseHeaders.Server="
+      # Rate limiting (higher for sync clients)
+      - "traefik.http.middlewares.nc-ratelimit.ratelimit.average=1000"
+      - "traefik.http.middlewares.nc-ratelimit.ratelimit.burst=2000"
+      - "traefik.http.middlewares.nc-ratelimit.ratelimit.period=1m"
+      - "autoheal=true"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost/status.php"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    networks:
+      - personal_nextcloud_db
+      - personal_egress
+      - edge_internal
+
+  nextcloud-cron:
+    <<: *hardened
+    # /cron.sh runs as root, drops to www-data via su-exec for each
+    # cron invocation. No port binding (not Apache).
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    image: nextcloud:33.0.3
+    container_name: nextcloud-cron
+    entrypoint: /cron.sh
+    depends_on:
+      - nextcloud
+    volumes:
+      - /mnt/app/db/nextcloud/html:/var/www/html
+      - /mnt/app/db/nextcloud/config:/var/www/html/config
+      - /mnt/app/db/nextcloud/custom_apps:/var/www/html/custom_apps
+      - /mnt/app/db/nextcloud/themes:/var/www/html/themes
+      - /mnt/data/nextcloud:/var/www/html/data
+    environment:
+      - TZ=Some/Region
+    networks:
+      - personal_nextcloud_db
+      - personal_egress
+
+  nextcloud-clamav:
+    <<: *hardened
+    # clamav entrypoint runs as root, chowns the signature DB volume to
+    # the clamav user, then drops via gosu — needs the full LSIO 5-cap
+    # baseline.
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    image: clamav/clamav:1.5.2-35
+    container_name: nextcloud-clamav
+    volumes:
+      # Phase 4: clamav_data named volume → bind mount.
+      - /mnt/app/db/nextcloud/clamav-data:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdscan", "--ping", "3"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    networks:
+      - personal_nextcloud_db
+      - personal_egress  # signature DB updates
+
+  nextcloud-elasticsearch:
+    <<: *hardened
+    # ES image entrypoint runs as root, then drops to elasticsearch user
+    # (UID 1000) via su-exec.
+    cap_add:
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+    image: elasticsearch:8.19.15
+    container_name: nextcloud-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - /mnt/app/db/nextcloud/elasticsearch:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:9200/_cluster/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - personal_nextcloud_db
+
+  # Service-key is `db` (not nextcloud-db) so Nextcloud's persisted
+  # config.php resolves it via Compose DNS. container_name disambiguates
+  # in docker ps.
+  db:
+    <<: *hardened
+    # postgres entrypoint runs as root, chowns /var/lib/postgresql/data,
+    # drops to postgres user via gosu.
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    image: postgres:16-alpine
+    container_name: nextcloud-db
+    env_file:
+      - ../common/secrets/.runtime/files.env
+    environment:
+      - POSTGRES_DB=nextcloud
+      - POSTGRES_USER=nextcloud
+    volumes:
+      - /mnt/app/db/nextcloud/db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "nextcloud"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - personal_nextcloud_db
+
+  # Service-key is `redis` (not nextcloud-redis) — same reason as `db` above.
+  redis:
+    <<: *hardened
+    # redis-alpine entrypoint runs as root, chowns /data, drops to redis
+    # user via su-exec.
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    image: redis:7-alpine
+    container_name: nextcloud-redis
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - /mnt/app/db/nextcloud/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - personal_nextcloud_db
+
+  # ---- Vikunja ----
+  vikunja:
+    <<: *hardened
+    image: vikunja/vikunja:2.3.0
+    container_name: vikunja
+    environment:
+      - VIKUNJA_DATABASE_TYPE=sqlite
+      - VIKUNJA_SERVICE_TIMEZONE=Some/Region
+      - VIKUNJA_SERVICE_PUBLICURL=http://server:3456/
+      - VIKUNJA_CORS_ENABLE=false
+    volumes:
+      - /mnt/app/db/vikunja/files:/app/vikunja/files
+      - /mnt/app/db/vikunja/db:/db
+    ports:
+      - "3456:3456"
+    networks:
+      - personal_vikunja_db
+      - edge_internal
+      - personal_egress
+
+
+networks:
+  nas_default:
+    external: true
+  edge_internal:
+    external: true
+  personal_egress:
+    external: true
+  personal_immich_db:
+    external: true
+  personal_nextcloud_db:
+    external: true
+  personal_vikunja_db:
+    external: true

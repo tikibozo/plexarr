@@ -1,0 +1,337 @@
+# host: cloud-server
+# project: zabbix — Zabbix server stack — server + web + MySQL + agent + rclone + postfix
+
+# F5 (2026-05-18): cap_drop baseline. Services do `<<: *hardened` + inline
+# `cap_add: [...]` for caps they need back. Mirrors server's monitor/
+# pattern (see Phase 5 history in plan ledger).
+x-defaults: &defaults
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  logging: &log
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+x-hardened: &hardened
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  logging: *log
+
+services:
+  zabbix-server:
+    <<: *hardened
+    # NNP-off retained — server runs /usr/bin/fping (setuid bit) for ICMP
+    # host availability monitors. NNP would block the setuid jump. Same
+    # exception we documented for monitor/zabbix-proxy and zabbix-agent2
+    # (see feedback_zabbix_proxy_nnp_breaks_icmp).
+    security_opt: []
+    # gosu drop to zabbix user + fping ICMP + secrets file reads. Same cap
+    # set as monitor/zabbix-proxy on server.
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+      - NET_RAW
+    container_name: zabbix-server
+    image: zabbix/zabbix-server-mysql:ubuntu-7.4.10@sha256:1a89f0082e490c5b5768561da501a3749c7be588b0efcf2792f7d89e96889538
+    ports:
+      - "10051:10051"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /data/opt/zabbix/usr/lib/zabbix/alertscripts:/usr/lib/zabbix/alertscripts:ro
+      - /data/opt/zabbix/usr/lib/zabbix/externalscripts:/usr/lib/zabbix/externalscripts:ro
+      - /data/opt/zabbix/var/lib/zabbix/export:/var/lib/zabbix/export:rw
+      - /data/opt/zabbix/var/lib/zabbix/modules:/var/lib/zabbix/modules:ro
+      - /data/opt/zabbix/var/lib/zabbix/enc:/var/lib/zabbix/enc:ro
+      - /data/opt/zabbix/var/lib/zabbix/ssh_keys:/var/lib/zabbix/ssh_keys:ro
+      - /data/opt/zabbix/var/lib/zabbix/mibs:/var/lib/zabbix/mibs:ro
+      - ./server-config/zabbix_server_db_tls.conf:/etc/zabbix/zabbix_server_db_tls.conf:ro
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 20000
+        hard: 40000
+    env_file:
+      - ../common/secrets/.runtime/zabbix.env
+    depends_on:
+      - mysql-server
+    stop_grace_period: 30s
+    sysctls:
+      - net.ipv4.ip_local_port_range=1024 65000
+      - net.ipv4.conf.all.accept_redirects=0
+      - net.ipv4.conf.all.secure_redirects=0
+      - net.ipv4.conf.all.send_redirects=0
+    healthcheck:
+      # bash /dev/tcp socket check — the ubuntu base image has bash but no
+      # netcat by default. CMD-SHELL uses /bin/sh which is dash and does
+      # NOT support /dev/tcp, so invoke bash explicitly. Returns 0 iff
+      # zabbix_server's trapper is accepting TCP on 10051 inside the
+      # container.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/10051"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    labels:
+      autoheal: "true"
+      com.zabbix.description: "Zabbix server with MySQL database support"
+      com.zabbix.company: "Zabbix LLC"
+      com.zabbix.component: "zabbix-server"
+      com.zabbix.dbtype: "mysql"
+      com.zabbix.os: "ubuntu"
+
+  zabbix-web-nginx-mysql:
+    <<: *hardened
+    # gosu drop to zabbix:zabbix + NET_BIND_SERVICE for ports 80/443
+    # inside the container.
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+      - NET_BIND_SERVICE
+    container_name: zabbix-web-nginx-mysql
+    image: zabbix/zabbix-web-nginx-mysql:alpine-7.4.10@sha256:b6953010a68196b6dfa4ad3ac83279e08d8deb6f80c83c0a9c826d2714324807
+    ports:
+      - "80:8080"
+      - "443:8443"
+    expose:
+      - 8443
+      - 8080
+      - 80
+      - 443
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /data/opt/zabbix/usr/share/zabbix/modules:/usr/share/zabbix/modules:ro
+      - /data/opt/zabbix/ssl:/etc/ssl/nginx
+      - /data/opt/zabbix/nginx-ssl.conf:/etc/zabbix/nginx-ssl.conf:ro
+    env_file:
+      - ../common/secrets/.runtime/zabbix.env
+    depends_on:
+      - mysql-server
+      - zabbix-server
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    stop_grace_period: 10s
+    sysctls:
+      - net.core.somaxconn=65535
+    labels:
+      autoheal: "true"
+      com.zabbix.description: "Zabbix frontend on Nginx web-server with MySQL database support"
+      com.zabbix.company: "Zabbix LLC"
+      com.zabbix.component: "zabbix-frontend"
+      com.zabbix.webserver: "nginx"
+      com.zabbix.dbtype: "mysql"
+      com.zabbix.os: "alpine"
+
+  mysql-server:
+    <<: *hardened
+    # SYS_NICE for io_uring scheduling priority + LSIO 5-cap for the
+    # gosu-style drop to the mysql user + initdb chown.
+    cap_add:
+      - SYS_NICE
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    container_name: mysql-server
+    image: mysql:8.0.46@sha256:7dcddc01f13bab2f15cde676d44d01f61fc9f99fe7785e86196dfc07d358ae2b
+    # F1 (2026-05-18): no published ports — zabbix-server and zabbix-web
+    # reach this via the default compose network as `mysql-server:3306`.
+    # External diagnostic access goes via `docker exec mysql-server mysql ...`.
+    command:
+      - mysqld
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_bin
+      - --skip-character-set-client-handshake
+      - --default-authentication-plugin=mysql_native_password
+      - --log_bin_trust_function_creators=1
+      - --skip-log-bin
+      - --innodb-redo-log-capacity=536870912
+    volumes:
+      - /data/opt/zabbix/var/lib/mysql:/var/lib/mysql:rw
+    env_file:
+      - ../common/secrets/.runtime/zabbix.env
+    healthcheck:
+      # mysqladmin ping returns "mysqld is alive" once the server accepts
+      # connections; --silent flips it to exit code only. No auth needed.
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    labels:
+      autoheal: "true"
+    stop_grace_period: 1m
+
+  # F1 (folded into F5 deploy 2026-05-18): db_data_mysql legacy busybox
+  # data-only sidecar removed. It was a no-op — mysql-server's own bind
+  # mount on /data/opt/zabbix/var/lib/mysql already covers /var/lib/mysql.
+  # After F5 inherited `restart: unless-stopped` from *hardened it began
+  # crash-looping (busybox exits 0 immediately with no command), so we
+  # deleted it rather than special-casing the anchor.
+
+  zabbix-agent:
+    <<: *hardened
+    # NNP-off must be retained — agent uses /usr/bin/fping (setuid bit)
+    # for ICMP host-availability monitors. Same exception as the matching
+    # service on server (monitor/zabbix-agent2).
+    security_opt: []
+    # F5 (2026-05-18): replaced `privileged: true` with an explicit cap set.
+    # Same 8-cap recipe used on server monitor/zabbix-agent2.
+    # - SYS_PTRACE: agent discovers processes via /proc/*/status
+    # - DAC_READ_SEARCH: reads host /proc, /sys, /var/log over /hostfs
+    # - DAC_OVERRIDE: opens files across host UIDs (containers/etc)
+    # - NET_ADMIN + NET_RAW: ICMP fping monitors + raw socket
+    # - SYS_RAWIO: hwmon/sensors items
+    # - SETUID/SETGID: image-internal drop from root to zabbix user
+    # If any item breaks after this change, restore `privileged: true`
+    # temporarily and re-tighten with that item's strace output.
+    cap_add:
+      - SYS_PTRACE
+      - DAC_READ_SEARCH
+      - DAC_OVERRIDE
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_RAWIO
+      - SETUID
+      - SETGID
+    container_name: zabbix-agent
+    image: zabbix/zabbix-agent2:ubuntu-7.4.10@sha256:eaafff9f7aa805a2cb415ac5e4b43a7be8faaaed688474dc5f73faa4e2bc2942
+    network_mode: host
+    environment:
+      - ZBX_HOSTNAME=cloud-server
+      - ZBX_PASSIVESERVERS=127.0.0.1
+      - ZBX_ACTIVESERVERS=127.0.0.1
+      - ZBX_DEBUGLEVEL=2
+    dns:
+      - 10.100.0.1
+      - 1.1.1.1
+    volumes:
+      - /data/opt/zabbixagent:/var/lib/zabbix/buffer
+      - ./agentscripts:/agentscripts:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/log:/var/log:ro
+      - /data/backups:/data/backups:ro
+      - ./agent-config/user_parameters.conf:/etc/zabbix/zabbix_agent2.d/user_parameters.conf:ro
+      - ./agent-config/allowkey.conf:/etc/zabbix/zabbix_agent2.d/allowkey.conf:ro
+    user: 0:0
+    group_add:
+      - "999"   # docker group inside container, for /var/run/docker.sock access
+
+  rclone:
+    <<: *hardened
+    # rclone runs as root in-container and must READ files it does not own
+    # under /data (e.g. backups owned by other UIDs). cap_drop ALL strips
+    # root's POSIX-bypass; DAC_READ_SEARCH restores read-only traversal +
+    # file-read across owners (NOT writes — backup target is remote).
+    # Same pattern + reasoning as server monitor/rclone (commit 1987872,
+    # see feedback_hardened_anchor_strips_root_dac).
+    cap_add:
+      - DAC_READ_SEARCH
+    image: rclone/rclone:1.74.1@sha256:eb8788b795f0009324e9572b0e2acb9b56885327c2746b07d67a9d3b893a6602
+    container_name: rclone
+    # F1 (2026-05-18): bind to loopback only — webui is administered from
+    # server host via ssh tunnel. Hetzner FW already restricts ingress
+    # to the home IP, but the default `rcd/rcd` creds in the command line
+    # below mean a 0.0.0.0 binding inside the home network is still a
+    # weak link. Credential rotation deferred (now moot since unreachable).
+    ports:
+      - 127.0.0.1:5572:5572/tcp
+    volumes:
+      - /data/opt/rclone:/config/rclone
+      - /data/opt/rclone:/logs
+      - /etc/passwd:/etc/passwd:ro
+      - /etc/group:/etc/group:ro
+      - /dev/fuse:/dev/fuse
+      - /data:/data
+#     - /home/user/compose/zabbix/rclone/rclone-daily.sh:/etc/periodic/daily/rclone-daily.sh
+      - /home/user/compose/zabbix/rclone/rclone-daily.sh:/rclone-daily.sh
+    # SYS_ADMIN + SETPCAP were carried from the original config but the rcd
+    # web/sync workflow does not mount fuse, so they are not needed.
+    command: rcd -v --rc-web-gui --rc-web-gui-no-open-browser --rc-addr :5572 --rc-user rclone --rc-pass rclone --transfers=3 --copy-links
+    healthcheck:
+      # busybox nc -z probes that the rcd listener is up. HTTP basic auth
+      # means a curl-based check would also need creds; TCP-level liveness
+      # is enough.
+      test: ["CMD", "nc", "-z", "127.0.0.1", "5572"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    labels:
+      autoheal: "true"
+
+  postfix:
+    <<: *hardened
+    # Postfix master/qmgr/smtpd drop to the postfix user via setuid;
+    # NET_BIND_SERVICE for port 25 inside container. Same recipe as
+    # monitor/postfix on server.
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+      - NET_BIND_SERVICE
+    container_name: postfix
+    image: boky/postfix:latest@sha256:aafc772384232497bed875e1eb66b4d3e54ba1ebc86e2e185a6dc1dbc48182ef
+    # F1 (2026-05-18): bind to loopback only — only server host's own
+    # mailer scripts relay through this (the cron-driven agentscripts).
+    # No external SMTP-in expected.
+    ports:
+      - 127.0.0.1:2525:25/tcp
+    env_file:
+      - ../common/secrets/.runtime/zabbix-postfix.env
+    environment:
+      # Rewrite From: header for ANY submitting client (not just trusted) so
+      # sender_canonical_maps applies to messages relayed in via SMTP from
+      # the host MTA. Without this, Office 365 rejects with `SendAsDenied`.
+      POSTFIX_local_header_rewrite_clients: "static:all"
+    volumes:
+      - /opt/postfix/queue:/var/spool/postfix
+      - ./postfix/sender_canonical_maps:/etc/postfix/sender_canonical_maps:ro
+      - /opt/postfix/xoauth2-tokens:/var/spool/postfix/xoauth2-tokens
+    labels:
+      autoheal: "true"
+    # boky/postfix image ships its own HEALTHCHECK (currently observed
+    # as "(healthy)" in docker ps), so no override here.
+
+  # Autoheal sidecar: polls Docker for any container with label autoheal=true
+  # whose .State.Health is "unhealthy" and issues `docker restart`. Mirrors
+  # server's monitor/autoheal pattern (Phase 3a, commit history). Opt-in via
+  # label so safety-critical services (zabbix-agent — privileged, host network)
+  # can stay out.
+  #
+  # Note: this sidecar can't auto-restart itself if it goes unhealthy. The
+  # `restart: unless-stopped` covers the trivial crash case.
+  autoheal:
+    <<: *hardened
+    image: willfarrell/autoheal:1.2.0@sha256:31f580ef0279eaced5b38d631b08c474d70d8403c1c2fdd6ddcf2e879d5f3f7c
+    container_name: autoheal
+    environment:
+      - AUTOHEAL_CONTAINER_LABEL=autoheal
+      - AUTOHEAL_INTERVAL=30
+      - AUTOHEAL_START_PERIOD=60
+      - DOCKER_SOCK=/var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+# secrets:/run/secrets/ pattern removed 2026-05-18 in F2: zabbix-server,
+# zabbix-web-nginx-mysql, and mysql-server all accept MYSQL_USER / MYSQL_PASSWORD
+# / MYSQL_ROOT_PASSWORD as plain env vars, supplied via ../common/secrets/.runtime/zabbix.env
+# (SOPS-encrypted at rest, decrypted at compose-up by scripts/dco|up).
