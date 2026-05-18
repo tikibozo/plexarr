@@ -46,8 +46,8 @@ services:
     environment:
       - PLEX_UID=3001
       - PLEX_GID=3001
-      - TZ=Americas/Los_Angeles
-      - PLEX_CLAIM=claim-fYWLA3DBM_xx-Gygn-4X
+      - TZ=Some/Region
+      - PLEX_CLAIM=<claim>
       - ADVERTISE_IP=http://plex.yourdomain.com:45738/
     ports:
       - 32400:32400/tcp #main plex app
