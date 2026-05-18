@@ -22,17 +22,18 @@ The compose stack is divided across **multiple hosts** and **multiple projects p
 
 The original layout split services by *theme* — one project for user-facing stuff, another, "media" for the arr stack, "music", "abook", "photo", "sys", "rpt", etc. That made sense as a portability move (I could `down` a project on one host, copy the config, `up` it on another). But from a security perspective, this theme based organization ended up comingling services with different risk profiles on the same docker networks. For example the public-facing reverse proxy (huge blast radius) lived alongside the personal dashboard (tiny).
 
-In **Phase 4 (May 2026)** I restructured into **trust zones** — projects grouped by risk class and outbound-network needs, not by topic. Each zone has its own docker networks, and the higher-risk zones (anything that touches attacker-controlled content, like indexers and downloaders) sit on `internal: true` bridges with no host egress except via the zones they explicitly need to talk to. The trust-zone layout also lined up cleanly with **Phase 5/6 hardening** (capability dropping, no-new-privileges, network isolation) — see [HARDENING.md](./HARDENING.md).
+In May 2026 I restructured into **trust zones** — projects grouped by risk class and outbound-network needs, not by topic. Each zone has its own docker networks, and the higher-risk zones (anything that touches attacker-controlled content, like indexers and downloaders) sit on `internal: true` bridges with no host egress except via the zones they explicitly need to talk to. The was followed up with capability dropping, no-new-privileges, network isolation as well. See Hardening below for more on this.
 
 If you want to compare the older shape, the 12-themed-project layout (`nas` `sys` `monproxy` `media` `music` `abook` `ebook` `photo` `rpt` `files` `games`) is preserved in this repo's git history before the Phase 4 commit on `main`.
 
-### Current stack contents (post Phase 4, by trust zone)
+### Current stack contents (by trust zone/project)
 
 Main host `server` (TrueNAS Scale, runs everything user-facing):
 - **[edge/](./edge/docker-compose.yml)** — Public ingress + auth/security perimeter
     - [Traefik](https://github.com/traefik/traefik) — Reverse proxy (the only thing other than Plex exposed to the WAN)
     - [oauth2-proxy](https://github.com/oauth2-proxy/oauth2-proxy) + [Plex OIDC Bridge](https://github.com/tikibozo/plex-oidc-bridge) — Plex-account-backed SSO for non-plex services
     - [CrowdSec](https://www.crowdsec.net/) + firewall bouncer — log-driven IP banning
+    - [Wizarr](https://github.com/Wizarrrr/wizarr) Occasional new user signups
 - **[monitor/](./monitor/docker-compose.yml)** — Observability
     - [Zabbix](https://www.zabbix.com/), [autoheal](https://github.com/willfarrell/docker-autoheal) Monitoring proxy + agent (server lives off-host, see below)
     - [Uptime Kuma](https://github.com/louislam/uptime-kuma) Monitor for the monitoring
