@@ -46,8 +46,6 @@ services:
       - PGID=999
     volumes:
       - /mnt/app/db/sonarr/config:/config
-      - /mnt/app/db/sonarr/custom-cont-init.d:/custom-cont-init.d
-      - /mnt/app/db/sonarr/custom-services.d:/custom-services.d
       - /mnt/data:/data
       - /mnt/data2:/data2
       - /mnt/download:/download
@@ -104,8 +102,6 @@ services:
       - PGID=999
     volumes:
       - /mnt/app/db/radarr/config:/config
-      - /mnt/app/db/radarr/custom-cont-init.d:/custom-cont-init.d
-      - /mnt/app/db/radarr/custom-services.d:/custom-services.d
       - /mnt/data:/data
       - /mnt/data2:/data2
       - /mnt/download:/download
@@ -213,7 +209,12 @@ services:
   lidarr:
     <<: *hardened
     cap_add: *lsio_caps
-    image: lscr.io/linuxserver/lidarr:develop@sha256:e26d32316b0a93874f987c38c6652aebf646ed1041a814fe7478ed6e5249c888
+    # nightly = the plugins-capable Lidarr branch (Servarr wiki). One-way DB
+    # migration from develop. Deezer + Tidal acquisition is now native Lidarr
+    # plugins (Soulseek stays via Soularr+slskd) — replaced RandomNinjaAtk
+    # arr-scripts, which was removed (it ran curl|bash on every boot from a
+    # now-unmaintained repo).
+    image: lscr.io/linuxserver/lidarr:nightly@sha256:854684b3df33139a8907fa3e316a3c030676e8e753b7fac78b98d297b8cc6fe0
     container_name: lidarr
     environment:
       - PUID=999
@@ -221,13 +222,9 @@ services:
       - TZ=Some/Region
     volumes:
       - /mnt/app/db/lidarr/config:/config
-      - /mnt/app/db/lidarr/custom-services.d:/custom-services.d
-      - /mnt/app/db/lidarr/custom-cont-init.d:/custom-cont-init.d
       - /mnt/data:/data
       - /mnt/data2:/data2
       - /mnt/download:/download
-      - /mnt/data2/media/music-videos:/music-videos
-      - /mnt/data/media/music-lidarr-extended:/downloads-lidarr-extended
     ports:
       - 8686:8686
     healthcheck:
