@@ -20,7 +20,7 @@ Each compose file at the top has a two-line header (`# host:` / `# project:`) th
 - `serve-books/` — Audiobookshelf, abs-tract, ReadMeABook, plex-scan-watcher, Shelfmark, Grimmory + MariaDB.
 - `serve-games/` — RomM + MariaDB.
 - `process/` — Post-processing + analytics: Tdarr, Whisper, Unpackerr, Kometa, Recyclarr, Fetcharr, Tautulli, Checkrr, Tracearr + TimescaleDB + Redis.
-- `personal/` — High-data-sensitivity stacks: Immich (server, ML, postgres, redis, power-tools), Nextcloud + Postgres + Redis + clamav + elasticsearch, Vikunja. Per-app DB networks `internal: true`.
+- `personal/` — High-data-sensitivity stacks: Immich (server, ML, postgres, redis, power-tools), Nextcloud + Postgres + Redis + clamav + elasticsearch. Per-app DB networks `internal: true`.
 
 Pre-Phase-4 layout (12 themed projects: `nas` `sys` `monproxy` `media` `music` `abook` `ebook` `photo` `rpt` `files` `games`) is preserved in this repo's git history if you want to compare the older shape — see `git log` before the trust-zone restructure commit on `main`.
 

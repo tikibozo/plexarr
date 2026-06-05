@@ -57,7 +57,6 @@ EXTERNAL_NETWORKS_SERVER=(
     "process_tracearr_internal:internal"
     "personal_immich_db:internal"
     "personal_nextcloud_db:internal"
-    "personal_vikunja_db:internal"
     "serve_books_grimmory_db:internal"
     "serve_games_db:internal"
 )

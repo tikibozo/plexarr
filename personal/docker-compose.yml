@@ -1,5 +1,5 @@
 # host: server
-# project: personal — private data: Immich, Nextcloud, Vikunja
+# project: personal — private data: Immich, Nextcloud
 #
 # Phase 4 trust zone — HIGH risk class (private data). Per-app DB nets
 # are internal: true at create time. Each app dual-homed on edge_internal
@@ -9,7 +9,7 @@
 # Services migrated from:
 #   - photo/  — immich-server, immich-machine-learning, redis, database,
 #               power-tools (renamed → immich-power-tools service-key)
-#   - files/  — nextcloud, cron, clamav, elasticsearch, db, redis, vikunja
+#   - files/  — nextcloud, cron, clamav, elasticsearch, db, redis
 #
 # Named volumes converted to bind mounts (Phase 4 requirement):
 #   files/nextcloud_html  → /mnt/app/db/nextcloud/html
@@ -379,26 +379,6 @@ services:
     networks:
       - personal_nextcloud_db
 
-  # ---- Vikunja ----
-  vikunja:
-    <<: *hardened
-    image: vikunja/vikunja:2.3.0
-    container_name: vikunja
-    environment:
-      - VIKUNJA_DATABASE_TYPE=sqlite
-      - VIKUNJA_SERVICE_TIMEZONE=Some/Region
-      - VIKUNJA_SERVICE_PUBLICURL=http://server:3456/
-      - VIKUNJA_CORS_ENABLE=false
-    volumes:
-      - /mnt/app/db/vikunja/files:/app/vikunja/files
-      - /mnt/app/db/vikunja/db:/db
-    ports:
-      - "3456:3456"
-    networks:
-      - personal_vikunja_db
-      - edge_internal
-      - personal_egress
-
 
 networks:
   nas_default:
@@ -410,6 +390,4 @@ networks:
   personal_immich_db:
     external: true
   personal_nextcloud_db:
-    external: true
-  personal_vikunja_db:
     external: true

@@ -73,7 +73,6 @@ Main host `server` (TrueNAS Scale, runs everything user-facing):
 - **[personal/](./personal/docker-compose.yml)** — High-data-sensitivity stacks (private docker networks, no cross-talk by default)
     - [Immich](https://immich.app/) — Self-hosted photo/video
     - [Nextcloud](https://nextcloud.com/) + Postgres + Redis + ClamAV + Elasticsearch
-    - [Vikunja](https://vikunja.io/) — Self-hosted todo/projects
 
 Off-site host `cloud-server` (small cloud VM, exists so an outage of `server` still notifies):
 - **[zabbix/](./zabbix/docker-compose.yml)** — Zabbix server stack
