@@ -13,13 +13,13 @@ Each compose file at the top has a two-line header (`# host:` / `# project:`) th
 
 ### `server` (main, post Phase 4)
 - `edge/` — Public ingress (Traefik :443) + auth/security perimeter: oauth2-proxy, plex-oidc-bridge, CrowdSec + bouncer. Highest blast radius for misconfig but stateless.
-- `monitor/` — Observability + ops: Zabbix proxy + monitor-mysql + agent2, uptime-kuma, postfix relay, rclone, autoheal sidecar, dozzle, organizr + homepage + socket-proxy-homepage.
-- `acquire/` — VPN-fronted downloaders + indexers (highest risk class — fetches attacker-controlled content). gluetun ×3 + qBittorrent + qui + Prowlarr + autobrr + FlareSolverr + slskd + soularr + slskd-port-sync + SABnzbd + TheLounge.
+- `monitor/` — Observability + ops: Zabbix proxy + monitor-mysql + agent2, uptime-kuma, postfix relay, rclone, autoheal sidecar, dozzle, scrutiny, beszel + beszel-agent, prowlarr-indexer-report, organizr + homepage + per-consumer read-only socket-proxies.
+- `acquire/` — VPN-fronted downloaders + indexers (highest risk class — fetches attacker-controlled content). gluetun (single WireGuard egress) + qBittorrent + qui + Prowlarr + autobrr + FlareSolverr + slskd + soularr + SABnzbd + TheLounge.
 - `manage/` — *arr managers: Sonarr ×2 (1080/4k), Radarr ×2 (1080/4k), Lidarr, Bazarr ×2, Aurral.
 - `serve-plex/` — Plex + Seerr + Requestrr.
 - `serve-books/` — Audiobookshelf, abs-tract, ReadMeABook, plex-scan-watcher, Shelfmark, Grimmory + MariaDB.
 - `serve-games/` — RomM + MariaDB.
-- `process/` — Post-processing + analytics: Tdarr, Whisper, Unpackerr, Kometa, Recyclarr, Fetcharr, Tautulli, Checkrr, Tracearr + TimescaleDB + Redis.
+- `process/` — Post-processing + analytics: Tdarr, subgen + subarr (subtitle transcription/coordination), Unpackerr, Kometa, Recyclarr, Fetcharr, Tautulli, Checkrr, Tracearr + TimescaleDB + Redis, plex-watch-sync.
 - `personal/` — High-data-sensitivity stacks: Immich (server, ML, postgres, redis, power-tools), Nextcloud + Postgres + Redis + clamav + elasticsearch. Per-app DB networks `internal: true`.
 
 Pre-Phase-4 layout (12 themed projects: `nas` `sys` `monproxy` `media` `music` `abook` `ebook` `photo` `rpt` `files` `games`) is preserved in this repo's git history if you want to compare the older shape — see `git log` before the trust-zone restructure commit on `main`.

@@ -243,7 +243,7 @@ services:
     # see feedback_hardened_anchor_strips_root_dac).
     cap_add:
       - DAC_READ_SEARCH
-    image: rclone/rclone:1.74.1@sha256:eb8788b795f0009324e9572b0e2acb9b56885327c2746b07d67a9d3b893a6602
+    image: rclone/rclone:1.74.3@sha256:623378ad0ff3ebd5cebf77720843c0e02edfe46e2d5b5ac6bed54c6371780dfb
     container_name: rclone
     # F1 (2026-05-18): bind to loopback only — webui is administered from
     # server host via ssh tunnel. Hetzner FW already restricts ingress
@@ -289,7 +289,7 @@ services:
       - SETGID
       - NET_BIND_SERVICE
     container_name: postfix
-    image: boky/postfix:latest@sha256:aafc772384232497bed875e1eb66b4d3e54ba1ebc86e2e185a6dc1dbc48182ef
+    image: boky/postfix:5.1.0
     # F1 (2026-05-18): bind to loopback only — only server host's own
     # mailer scripts relay through this (the cron-driven agentscripts).
     # No external SMTP-in expected.

@@ -1,18 +1,12 @@
 # host: server
 # project: acquire — VPN-fronted downloaders + indexers + direct usenet
 #
-# Phase 4 trust zone — HIGHEST risk class (fetches attacker-controlled
-# content). Services migrated from:
-#   - media/  — gluetun, gluetun-qbt, qbittorrent, qui, prowlarr,
-#               flaresolverr, autobrr, lounge, sabnzbd
-#   - music/  — gluetun-music (renamed-context), slskd, soularr,
-#               slskd-port-sync
+# HIGHEST risk class (fetches attacker-controlled content).
 #
-# In music/, gluetun is named `gluetun` with `container_name: gluetun-music`.
-# After moving into acquire/, the service-key collides with media/'s
-# `gluetun`, so we rename the service-key to `gluetun-music` to match
-# container_name and make `network_mode: "service:..."` references
-# unambiguous.
+# One gluetun instance (WireGuard) is the VPN egress for Prowlarr,
+# qBittorrent, and slskd, with VPN port-forwarding for the torrent/Soulseek
+# listen ports. Service-keys match container_name so
+# `network_mode: "service:gluetun"` references stay unambiguous.
 
 x-defaults: &defaults
   restart: unless-stopped
@@ -45,15 +39,14 @@ x-lsio-caps: &lsio_caps
   - SETGID
 
 services:
-  # gluetun — primary VPN egress for media-side indexers/downloaders
+  # gluetun — primary VPN egress for indexers/downloaders
   gluetun:
     <<: *hardened
     image: qmcgaw/gluetun:v3.41.1@sha256:1a5bf4b4820a879cdf8d93d7ef0d2d963af56670c9ebff8981860b6804ebc8ab
     container_name: gluetun
-    # NET_ADMIN for tun/iptables/wireguard. The rest is the LSIO 5-cap
-    # set — gluetun chowns + chmods /etc/openvpn/{target.ovpn,auth.conf}
-    # to its internal openvpn user before exec'ing, and reopens the
-    # file from that user (so DAC_OVERRIDE on the read path too).
+    # NET_ADMIN for tun/iptables/wireguard. The LSIO 5-cap set is harmless on
+    # the WireGuard path; it was required when this instance ran OpenVPN and
+    # chowned its config files.
     cap_add:
       - NET_ADMIN
       - CHOWN
@@ -69,7 +62,12 @@ services:
       - ../common/secrets/.runtime/vpn.env
     environment:
       - VPN_SERVICE_PROVIDER=PROVIDER
+      - VPN_TYPE=wireguard
+      - WIREGUARD_ADDRESSES=WG_ADDRESS
+      - WIREGUARD_MTU=1320
       - SERVER_REGIONS=REGION
+      # Statically reserved VPN port-forward ports: qBittorrent + slskd listen.
+      - FIREWALL_VPN_INPUT_PORTS=PORT1,PORT2
       - FIREWALL_OUTBOUND_SUBNETS=SUBNETS
       - HTTP_CONTROL_SERVER_ADDRESS=:8011
     ports:
@@ -80,6 +78,8 @@ services:
       - 9696:9696/tcp # prowlarr
       - 7474:7474/tcp # autobrr
       - 9000:9000/tcp # thelounge
+      - 8081:8081/tcp # qbittorrent webui
+      - 5030:5030/tcp # slskd webui
       - 8011:8011 # control server
     healthcheck:
       test: ["CMD-SHELL", "/gluetun-entrypoint healthcheck"]
@@ -94,7 +94,7 @@ services:
   prowlarr:
     <<: *hardened
     cap_add: *lsio_caps
-    image: lscr.io/linuxserver/prowlarr:develop@sha256:e55d41d4b24e8be63212c9292aa5cd20bb4cb330dfb4a896dd35c43d2a092931
+    image: lscr.io/linuxserver/prowlarr:develop@sha256:bfa06aba3010e8ed352c9576d1b7d270aede967990e4a2b54a0ca2e21628959d
     container_name: prowlarr
     environment:
       - PUID=999
@@ -117,7 +117,7 @@ services:
 
   autobrr:
     <<: *hardened
-    image: ghcr.io/autobrr/autobrr:v1.79.0
+    image: ghcr.io/autobrr/autobrr:v1.81.0
     container_name: autobrr
     user: 999:999
     environment:
@@ -149,7 +149,7 @@ services:
   flaresolverr:
     <<: *hardened
     cap_add: *lsio_caps
-    image: ghcr.io/flaresolverr/flaresolverr:v3.4.6
+    image: ghcr.io/flaresolverr/flaresolverr:v3.5.0
     container_name: flaresolverr
     environment:
       - PUID=999
@@ -163,52 +163,10 @@ services:
       gluetun:
         condition: service_healthy
 
-  # gluetun-qbt — secondary VPN egress for qBittorrent (port-forwarding on)
-  gluetun-qbt:
-    <<: *hardened
-    image: qmcgaw/gluetun:v3.41.1@sha256:1a5bf4b4820a879cdf8d93d7ef0d2d963af56670c9ebff8981860b6804ebc8ab
-    container_name: gluetun-qbt
-    cap_add:
-      - NET_ADMIN
-      - CHOWN
-      - FOWNER
-      - DAC_OVERRIDE
-      - SETUID
-      - SETGID
-    devices:
-      - /dev/net/tun:/dev/net/tun
-    env_file:
-      - ../common/secrets/.runtime/vpn.env
-    environment:
-      - PORT_FORWARD_ONLY=on
-      - VPN_PORT_FORWARDING=on
-      - VPN_SERVICE_PROVIDER=VPN Provider
-      - SERVER_REGIONS=REGION
-      - FIREWALL_OUTBOUND_SUBNETS=SUBNETS
-      - HTTP_CONTROL_SERVER_ADDRESS=:8005
-      - DOT=off
-      - BLOCK_MALICIOUS=off
-    volumes:
-      - /mnt/app/db/gluetun-qbt:/gluetun
-    ports:
-      - 6881:6881 # BT
-      - 6881:6881/udp # qBT
-      - 8081:8081 # qBT
-      - 8005:8005 # control server
-    healthcheck:
-      test: ["CMD-SHELL", "/gluetun-entrypoint healthcheck"]
-      interval: 5s
-      timeout: 5s
-      start_period: 90s
-      retries: 3
-    networks:
-      - vpn_egress
-      - arr_control
-
   qbittorrent:
     <<: *hardened
     cap_add: *lsio_caps
-    image: lscr.io/linuxserver/qbittorrent:5.2.0
+    image: lscr.io/linuxserver/qbittorrent:5.2.2
     container_name: qbittorrent
     env_file:
       - ../common/secrets/.runtime/media.env
@@ -217,21 +175,20 @@ services:
       - PGID=999
       - TZ=Some/Region
       - WEBUI_PORT=8081
-      - DOCKER_MODS=ghcr.io/t-anc/gsp-qbittorent-gluetun-sync-port-mod:main
-      - GSP_QBT_ADDR=http://localhost:8081
-      - GSP_GTN_ADDR=http://localhost:8005
+      # qBittorrent's listen port is set to the static VPN reserved port via
+      # the WebUI — no dynamic gluetun port-sync mod needed.
     volumes:
       - /mnt/app/db/qbittorrent:/config
       - /mnt/download:/download
-    network_mode: "service:gluetun-qbt"
+    network_mode: "service:gluetun"
     depends_on:
-      gluetun-qbt:
+      gluetun:
         condition: service_healthy
     stop_grace_period: 30s
 
   qui:
     <<: *hardened
-    image: ghcr.io/autobrr/qui:v1.18.0
+    image: ghcr.io/autobrr/qui:v1.21.0
     container_name: qui
     volumes:
       - /mnt/app/db/qui:/config
@@ -248,7 +205,7 @@ services:
   sabnzbd:
     <<: *hardened
     cap_add: *lsio_caps
-    image: lscr.io/linuxserver/sabnzbd:5.0.3
+    image: lscr.io/linuxserver/sabnzbd:5.0.4
     container_name: sabnzbd
     environment:
       - PUID=999
@@ -263,43 +220,6 @@ services:
       - arr_control
       - arr_egress
 
-  # gluetun-music — VPN egress for slskd
-  gluetun-music:
-    <<: *hardened
-    image: qmcgaw/gluetun:v3.41.1@sha256:1a5bf4b4820a879cdf8d93d7ef0d2d963af56670c9ebff8981860b6804ebc8ab
-    container_name: gluetun-music
-    cap_add:
-      - NET_ADMIN
-      - CHOWN
-      - FOWNER
-      - DAC_OVERRIDE
-      - SETUID
-      - SETGID
-    devices:
-      - /dev/net/tun:/dev/net/tun
-    env_file:
-      - ../common/secrets/.runtime/vpn.env
-    environment:
-      - VPN_SERVICE_PROVIDER=VPN PROVIDER
-      - SERVER_REGIONS=REGION
-      - VPN_PORT_FORWARDING=on
-      - FIREWALL_OUTBOUND_SUBNETS=SUBNETS
-      - HTTP_CONTROL_SERVER_ADDRESS=:8011
-    ports:
-      - 5030:5030 # slskd
-      - 8012:8011 # gluetun-music control server
-    volumes:
-      - /mnt/app/db/gluetun-music:/gluetun
-    healthcheck:
-      test: ["CMD-SHELL", "/gluetun-entrypoint healthcheck"]
-      interval: 5s
-      timeout: 5s
-      start_period: 90s
-      retries: 3
-    networks:
-      - vpn_egress
-      - arr_control
-
   slskd:
     <<: *hardened
     image: slskd/slskd:latest@sha256:ab9ed50e028b524cefdb7c1dd8ebca368a076e18441ee8ac2326473eb850b4c3
@@ -309,15 +229,16 @@ services:
       - SLSKD_SHARED_DIR=/music
       - SLSKD_DOWNLOAD_DIR=/downloads
       - SLSKD_HEALTH_KEY=slskd-homepage-readonly-key
+      - SLSKD_SLSK_LISTEN_PORT=PORT2 # static VPN reserved port
     user: "999:999"
     volumes:
       - /mnt/app/db/slskd/config:/app
       - /mnt/download/aurral:/downloads
       - /mnt/data2/media/music:/music:ro
-      - /mnt/app/db/slskd-port-sync/healthcheck.sh:/healthcheck.sh:ro
-    network_mode: "service:gluetun-music"
+      - ./slskd/healthcheck.sh:/healthcheck.sh:ro
+    network_mode: "service:gluetun"
     depends_on:
-      gluetun-music:
+      gluetun:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "/bin/sh", "/healthcheck.sh"]
@@ -341,24 +262,6 @@ services:
       - /mnt/app/db/soularr:/data
     networks:
       - arr_control
-
-  slskd-port-sync:
-    <<: *hardened
-    image: alpine:latest@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11
-    container_name: slskd-port-sync
-    user: "999:999"
-    depends_on:
-      gluetun-music:
-        condition: service_healthy
-    volumes:
-      - /mnt/app/db/slskd/config:/configs/slskd
-      - /mnt/app/db/slskd-port-sync/sync.sh:/sync.sh:ro
-    entrypoint: ["/bin/sh", "/sync.sh"]
-    # Reaches gluetun-music's HTTP control server via container DNS;
-    # both endpoints sit on arr_control.
-    networks:
-      - arr_control
-
 
 networks:
   nas_default:

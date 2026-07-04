@@ -39,7 +39,7 @@ services:
       - SETUID
       - SETGID
       - NET_BIND_SERVICE
-    image: boky/postfix:latest@sha256:aafc772384232497bed875e1eb66b4d3e54ba1ebc86e2e185a6dc1dbc48182ef
+    image: boky/postfix:5.1.0
     container_name: postfix
     ports:
       - 25:25/tcp
@@ -68,7 +68,7 @@ services:
     # Phase 5: ran as `rcd` (remote control daemon) only — no in-container
     # FUSE mounts, so SYS_ADMIN + SETPCAP dropped. /dev/fuse still bound
     # in case a future RC API call invokes a mount; no FUSE caps granted.
-    image: rclone/rclone:1.74.1
+    image: rclone/rclone:1.74.3
     container_name: rclone
     cap_add:
       # cap_drop:ALL stripped root's DAC bypass, so the backup failed on
@@ -80,9 +80,14 @@ services:
       # Bind to the DMZ NIC only. Reachable from OpenVPN clients via
       # 10.0.0.3:5572; pfSense doesn't WAN-forward 5572.
       - 10.0.0.3:5572:5572/tcp
+    environment:
+      # Use the SOPS-decrypted config (mounted below) instead of the plaintext
+      # /config/rclone/rclone.conf. Honored by the rcd daemon and docker-exec calls.
+      - RCLONE_CONFIG=/config/rclone.conf
     env_file:
       - ../common/secrets/.runtime/sys-rclone.env
     volumes:
+      - ../common/secrets/.runtime/rclone-monitor.conf:/config/rclone.conf:ro
       - /mnt/app/db/rclone:/config/rclone
       - /mnt/app/db/rclone:/logs
       - /etc/passwd:/etc/passwd:ro
@@ -313,10 +318,14 @@ services:
 
   homepage:
     <<: *hardened
-    image: ghcr.io/gethomepage/homepage:v1.13.1
+    image: ghcr.io/gethomepage/homepage:v1.13.2
     container_name: homepage
     depends_on:
       - socket-proxy-homepage
+    # Widget API keys/passwords ({{HOMEPAGE_VAR_*}} in services.yaml) come from
+    # SOPS — homepage.sops.yaml decrypted to .runtime/homepage.env.
+    env_file:
+      - ../common/secrets/.runtime/homepage.env
     environment:
       - HOMEPAGE_ALLOWED_HOSTS=server.mylocal:3001
       - HOMEPAGE_FILE_SHELFMARK_COOKIE=/app/config/.shelfmark-cookie
@@ -344,7 +353,7 @@ services:
   # leakage from container inspect).
   socket-proxy-homepage:
     <<: *hardened
-    image: lscr.io/linuxserver/socket-proxy:3.2.19
+    image: lscr.io/linuxserver/socket-proxy:3.4.0
     container_name: socket-proxy-homepage
     read_only: true
     tmpfs:
@@ -379,7 +388,7 @@ services:
   # the UI is reachable over LAN/OpenVPN but not WAN.
   dozzle:
     <<: *hardened
-    image: amir20/dozzle:latest@sha256:1cc972250626553009ddacbdf1f5725b681cdcbabe551fec69cd728882ffbc58
+    image: amir20/dozzle:v10.6.6
     container_name: dozzle
     environment:
       - DOZZLE_NO_ANALYTICS=true
@@ -410,7 +419,7 @@ services:
   # questions homepage doesn't.
   socket-proxy-dozzle:
     <<: *hardened
-    image: lscr.io/linuxserver/socket-proxy:3.2.19
+    image: lscr.io/linuxserver/socket-proxy:3.4.0
     container_name: socket-proxy-dozzle
     read_only: true
     tmpfs:
@@ -441,6 +450,202 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - mon_internal
+
+  # Scrutiny - SMART attribute history + trend dashboard. Omnibus image
+  # bundles collector + web + InfluxDB 2.x. ADDITIVE only: Multi-Report and
+  # Zabbix remain the alerting path; Scrutiny is for visual wear trending.
+  #
+  # Device access: drives are behind the SAS HBA/expander where /dev/sdX
+  # names reorder across reboots, so an explicit `devices:` list would go
+  # stale and silently monitor the wrong set. Grant the block-device cgroup
+  # classes instead (major 8 = sd*, 259 = nvme) + bind /dev so smartctl
+  # always sees the live set. Phase 5 posture kept: NO `privileged: true`.
+  #
+  # Least-priv caps: SYS_RAWIO (ATA/SCSI SMART passthrough) + SYS_ADMIN
+  # (NVMe smart-log ioctl). If it fails to start under cap_drop ALL, check
+  # `docker logs scrutiny` and restore caps per the zabbix-agent2 method.
+  # Collector runs once daily. Internal only - reachable at server:8089 via
+  # the mon_egress bridge.
+  scrutiny:
+    <<: *hardened
+    cap_add:
+      - SYS_RAWIO
+      # SYS_ADMIN: NVMe smart-log ioctl needs it; SATA/SAS only need SYS_RAWIO.
+      - SYS_ADMIN
+      # The omnibus image ships /opt/scrutiny/web (and assets/) as mode
+      # 0644 DIRECTORIES - no search/execute bit - and relies on the
+      # container running as root with full DAC bypass to traverse them.
+      # `<<: *hardened` cap_drop ALL removes that, so the web server can
+      # readdir but cannot open index.html/*.js -> browser gets a raw file
+      # listing. DAC_READ_SEARCH restores read+traverse only (read-only).
+      - DAC_READ_SEARCH
+    image: ghcr.io/analogj/scrutiny:v0.9.2-omnibus
+    container_name: scrutiny
+    environment:
+      - COLLECTOR_CRON_SCHEDULE=0 0 * * *
+      - TZ=Some/Region
+    device_cgroup_rules:
+      # SCSI-disk majors: 8 = sda-sdp; sdq+ rolls to 65, then 66-71 and
+      # 128-135. Drives span the SAS expander across several majors, so
+      # grant the full SCSI-disk major set (still least-priv: specific
+      # block majors, not `privileged`). 259 = nvme/blkext.
+      - "b 8:* rwm"
+      - "b 65:* rwm"
+      - "b 66:* rwm"
+      - "b 67:* rwm"
+      - "b 68:* rwm"
+      - "b 69:* rwm"
+      - "b 70:* rwm"
+      - "b 71:* rwm"
+      - "b 128:* rwm"
+      - "b 129:* rwm"
+      - "b 130:* rwm"
+      - "b 131:* rwm"
+      - "b 132:* rwm"
+      - "b 133:* rwm"
+      - "b 134:* rwm"
+      - "b 135:* rwm"
+      - "b 259:* rwm"
+      # NVMe SMART uses the controller CHARACTER device /dev/nvmeN
+      # (smartctl --device nvme). char major 245 = nvme, 244 = nvme-generic.
+      # CAVEAT: these are *dynamically* allocated majors - if NVMe drives
+      # drop out of Scrutiny after a kernel upgrade, re-check
+      # `grep nvme /proc/devices` and update these numbers.
+      - "c 244:* rwm"
+      - "c 245:* rwm"
+    volumes:
+      - /mnt/app/db/scrutiny/config:/opt/scrutiny/config
+      - /mnt/app/db/scrutiny/influxdb:/opt/scrutiny/influxdb
+      - /run/udev:/run/udev:ro
+      - /dev:/dev:ro
+    ports:
+      - 8089:8080
+    networks:
+      - mon_egress
+
+  # Beszel - lightweight server-monitoring hub (PocketBase web app + SQLite).
+  # Live per-container CPU/mem/net view, complementing Zabbix (alerting),
+  # Scrutiny (SMART), Dozzle (logs), Uptime-Kuma (uptime).
+  #
+  # The hub connects OUT to beszel-agent over mon_internal (beszel-agent:45876),
+  # authenticating with the hub's own ed25519 public key. Internal only - bound
+  # to the DMZ NIC (10.0.0.3:8092) like dozzle/scrutiny/uptime-kuma; no WAN.
+  beszel:
+    <<: *hardened
+    image: henrygd/beszel:0
+    container_name: beszel
+    environment:
+      - APP_URL=http://server.mylocal:8092
+    ports:
+      - "10.0.0.3:8092:8090"
+    volumes:
+      - /mnt/app/db/beszel/beszel_data:/beszel_data
+    networks:
+      # mon_internal to reach beszel-agent; mon_egress (bridge) for host-port
+      # DNAT + outbound update checks (an internal-only net loses port publishing).
+      - mon_internal
+      - mon_egress
+
+  # Beszel agent - collects host + per-container stats for the hub. Runs in
+  # SSH-listen mode: it listens on 45876 (mon_internal) and the hub dials in,
+  # authenticating against KEY (the hub's ed25519 PUBLIC key). A public key is
+  # not a secret - it's authorized_keys material - so it's inlined rather than
+  # SOPS-encrypted. No host port published; only the hub reaches it.
+  #
+  # Reads Docker via the dedicated read-only socket-proxy (DOCKER_HOST), not a
+  # raw socket mount - matches the homepage/dozzle posture.
+  beszel-agent:
+    <<: *hardened
+    image: henrygd/beszel-agent:0
+    container_name: beszel-agent
+    depends_on:
+      - socket-proxy-beszel
+    environment:
+      - LISTEN=45876
+      - NETWORK=tcp
+      - KEY=ssh-ed25519 AAAA...changeme
+      # Read the docker API via the dedicated read-only proxy (no socket mount).
+      - DOCKER_HOST=tcp://socket-proxy-beszel:2375
+      # Headline the CPU package temp in the All-Systems table (default is the
+      # hottest sensor, which on a many-drive NAS is always a drivetemp). All
+      # sensors stay available in the system detail view - this only sets the
+      # summary sensor.
+      - PRIMARY_SENSOR=coretemp_package_id_0
+    volumes:
+      - /mnt/app/db/beszel/agent_data:/var/lib/beszel-agent
+      # No /extra-filesystems disk panels: TrueNAS owns disk usage + I/O. ZFS
+      # nested datasets defeat Beszel's single-statfs-per-mount model and
+      # per-pool I/O has no /proc/diskstats device, so the pool panels were
+      # misleading. Temps work without any /sys mount (the container reads host hwmon).
+    networks:
+      - mon_internal
+
+  # Dedicated read-only docker API proxy for the Beszel agent. Scoped to the
+  # minimum Beszel polls: CONTAINERS (list + /containers/{id}/stats) + INFO,
+  # plus PING/VERSION.
+  socket-proxy-beszel:
+    <<: *hardened
+    image: lscr.io/linuxserver/socket-proxy:3.4.0
+    container_name: socket-proxy-beszel
+    read_only: true
+    tmpfs:
+      - /run
+    environment:
+      - CONTAINERS=1
+      - INFO=1
+      - PING=1
+      - VERSION=1
+      - IMAGES=0
+      - NETWORKS=0
+      - VOLUMES=0
+      - SERVICES=0
+      - TASKS=0
+      - SECRETS=0
+      - CONFIGS=0
+      - PLUGINS=0
+      - SYSTEM=0
+      - DISTRIBUTION=0
+      - SESSION=0
+      - SWARM=0
+      - NODES=0
+      - EVENTS=0
+      - POST=0
+      - DELETE=0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - mon_internal
+
+  # Live Prowlarr indexer usefulness report (ranks indexers by grabs / trend /
+  # query cost / per-app source; flags ones safe to disable). Read-only against
+  # Prowlarr. Source: github.com/user/prowlarr-indexer-report. UI at
+  # server.mylocal:9697. cap_drop:ALL is fine — non-root (uid 10001), binds
+  # an unprivileged port, writes nothing, reads no host files.
+  prowlarr-indexer-report:
+    <<: *hardened
+    image: ghcr.io/user/prowlarr-indexer-report:0.5.2
+    container_name: prowlarr-indexer-report
+    env_file:
+      # PROWLARR_API_KEY — decrypted from prowlarr-indexer-report.sops.yaml.
+      - ../common/secrets/.runtime/prowlarr-indexer-report.env
+    environment:
+      - PROWLARR_URL=http://server.mylocal:9696
+      # Browser-facing URL so the report can deep-link to Prowlarr's indexer list.
+      - PROWLARR_PUBLIC_URL=http://server.mylocal:9696
+      - WINDOW_DAYS=90
+      - REFRESH_INTERVAL_MINUTES=15
+    ports:
+      - 9697:8787
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/healthz', timeout=3).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    # mon_egress (bridge): publishes host:9697 and provides outbound to reach
+    # Prowlarr at server.mylocal:9696.
+    networks:
+      - mon_egress
 
 
 secrets:

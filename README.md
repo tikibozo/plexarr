@@ -39,10 +39,13 @@ Main host `server` (TrueNAS Scale, runs everything user-facing):
     - [Uptime Kuma](https://github.com/louislam/uptime-kuma) Monitor for the monitoring
     - [Dozzle](https://github.com/amir20/dozzle) Log wrangling
     - [Organizr](https://github.com/causefx/Organizr) + [Homepage](https://github.com/benphelps/homepage) Dashboard
+    - [Scrutiny](https://github.com/AnalogJ/scrutiny) SMART disk-health history + wear trending
+    - [Beszel](https://github.com/henrygd/beszel) Lightweight per-container CPU/mem/net metrics
+    - [prowlarr-indexer-report](https://github.com/tikibozo/prowlarr-indexer-report) Ranks Prowlarr indexers by usefulness
     - [Postfix](https://github.com/bokysan/docker-postfix) SMTP relay
     - [rclone](https://rclone.org/) backups
 - **[acquire/](./acquire/docker-compose.yml)** — VPN-fronted downloaders + indexers (highest risk class — fetches attacker-controlled content)
-    - [Gluetun](https://github.com/qdm12/gluetun) ×3 — VPN egress
+    - [Gluetun](https://github.com/qdm12/gluetun) — single WireGuard VPN egress fronting every downloader/indexer
     - [qBittorrent](https://www.qbittorrent.org/) + [Qui](https://github.com/autobrr/qui) for torrents
     - [SABnzbd](https://sabnzbd.org/) for usenet
     - [slskd](https://github.com/slskd/slskd) + [Soularr](https://github.com/mrusse/soularr) — Soulseek bridge for Lidarr
@@ -63,13 +66,14 @@ Main host `server` (TrueNAS Scale, runs everything user-facing):
     - [RomM](https://github.com/rommapp/romm) for game organization/browsing/playing
 - **[process/](./process/docker-compose.yml)** — Post-processing + analytics
     - [Tdarr](https://home.tdarr.io/) for download post-processing to expected formats
-    - [Whisper](https://github.com/ahmetoner/whisper-asr-webservice) to create otherwise-unavailable subtitles
+    - [Subarr](https://github.com/coaxk/subarr) + subgen (Whisper transcription worker) to create otherwise-unavailable subtitles
     - [Unpackerr](https://github.com/Unpackerr/unpackerr) for archive management
     - [Kometa](https://kometa.wiki/) - collections
     - [Recyclarr](https://github.com/recyclarr/recyclarr) TRaSH guide deployment
     - [Fetcharr](https://github.com/egg82/fetcharr) to keep things fresh
     - [Tautulli](https://tautulli.com/) + [Tracearr](https://github.com/connorgallopo/tracearr) for reporting
     - [Checkrr](https://github.com/aetaric/checkrr) bitrot detection & remediation (so far unneeded on zfs with ecc)
+    - [plex-watch-sync](https://github.com/tikibozo/plex-watch-sync) mirrors watched/progress state between Plex accounts
 - **[personal/](./personal/docker-compose.yml)** — High-data-sensitivity stacks (private docker networks, no cross-talk by default)
     - [Immich](https://immich.app/) — Self-hosted photo/video
     - [Nextcloud](https://nextcloud.com/) + Postgres + Redis + ClamAV + Elasticsearch
@@ -207,7 +211,7 @@ The age **private** key lives at `~/.config/sops/age/keys.txt` (mode 0600) on ea
 
 The encrypted `*.sops.yaml` files themselves are intentionally not included in this public mirror — they'd be useless to anyone but me (encrypted to my age recipients) and they'd add noise without value. If you're bootstrapping your own version: generate an age keypair (`age-keygen -o ~/.config/sops/age/keys.txt`), put the **public** key in `.sops.yaml` at the repo root with a `path_regex` matching `common/secrets/.*\.sops\.yaml$`, and `sops -e -i common/secrets/yourstack.sops.yaml`.
 
-One nuance: the SOPS pipeline is per-host. On hosts that don't run any project referencing `common/secrets/.runtime/...`, `decrypt_secrets` short-circuits and returns immediately — this matters because the official `mozilla/sops` docker image is amd64-only, and you don't want it to be a hard dependency on arm64 boxes that have no secrets to decrypt.
+One nuance: the SOPS pipeline is per-host. On hosts that don't run any project referencing `common/secrets/.runtime/...`, `decrypt_secrets` short-circuits and returns immediately — this avoids pulling and running the [getsops](https://github.com/getsops/sops) docker image on boxes that have no secrets to decrypt. (The image is multi-arch, so this is a needless-work optimization rather than an architecture constraint.)
 
 ### Image pinning
 

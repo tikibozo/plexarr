@@ -81,7 +81,8 @@ if [ "$current_ip" != "$homecidr" ]; then
   {"direction":"in","protocol":"tcp","port":"22","source_ips":["${homecidr}"],"description":"SSH from home"},
   {"direction":"in","protocol":"tcp","port":"443","source_ips":["${homecidr}"],"description":"HTTPS from home"},
   {"direction":"in","protocol":"udp","port":"51820","source_ips":["${homecidr}"],"description":"WireGuard from home"},
-  {"direction":"in","protocol":"tcp","port":"10051","source_ips":["${homecidr}"],"description":"Zabbix agent from home"}
+  {"direction":"in","protocol":"tcp","port":"10051","source_ips":["${homecidr}"],"description":"Zabbix agent from home"},
+  {"direction":"in","protocol":"icmp","source_ips":["${homecidr}"],"description":"ICMP from home (Uptime Kuma watcher)"}
 ]
 RULES
 

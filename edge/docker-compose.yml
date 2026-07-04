@@ -43,7 +43,7 @@ services:
     cap_add:
       - NET_BIND_SERVICE
       - DAC_OVERRIDE
-    image: traefik:v3.7.1@sha256:6b9cbca6fac42ab0075f5437d8dc1685cfd188626d8d515839ea94f8b6271c42
+    image: traefik:v3.7.5@sha256:e4d98158c01ad752fc1071d4e9573788747230d902cdde00a772516e692d07c9
     container_name: "traefik"
     env_file:
       - ../common/secrets/.runtime/namecheap.env
@@ -68,9 +68,14 @@ services:
       - "--entrypoints.dashboard.address=:8282"
       - "--certificatesresolvers.myresolver.acme.dnschallenge=true"
       - "--certificatesresolvers.myresolver.acme.dnschallenge.provider=namecheap"
+      # Public resolvers for lego's challenge/CNAME lookups. Without these, lego
+      # uses Docker's embedded resolver (127.0.0.11) and can fail to follow an
+      # _acme-challenge CNAME delegation.
+      - "--certificatesresolvers.myresolver.acme.dnschallenge.resolvers=1.1.1.1:53,1.0.0.1:53"
       - "--certificatesresolvers.myresolver.acme.caserver=https://acme-v02.api.letsencrypt.org/directory"
       - "--certificatesresolvers.myresolver.acme.email=user@yourdomain.com"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.myresolver.acme.preferredchain=ISRG Root X1"
       - "--accesslog=true"
       - "--accesslog.filepath=/var/log/traefik/access.log"
       - "--accesslog.bufferingsize=100"
@@ -95,7 +100,7 @@ services:
 
   plex-oidc-bridge:
     <<: *hardened
-    image: ghcr.io/user/plex-oidc-bridge:0.5@sha256:c5970c2ccf19c4f279202a59981fde62f46a5afa9db384388ec12f04a8fdbb37
+    image: ghcr.io/user/plex-oidc-bridge:0@sha256:343628d4157fc063b5110d5408eec419d32e3c373b5f379b8feab78f9d2a8a2e
     container_name: plex-oidc-bridge
     env_file:
       - ../common/secrets/.runtime/abook.env
@@ -120,7 +125,7 @@ services:
 
   oauth2-proxy:
     <<: *hardened
-    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.2
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.3
     container_name: oauth2-proxy
     env_file:
       - ../common/secrets/.runtime/music.env

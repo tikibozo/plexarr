@@ -41,7 +41,7 @@ services:
   tdarr:
     <<: *hardened
     cap_add: *lsio_caps
-    image: ghcr.io/haveagitgat/tdarr:latest@sha256:4dd21e8aa92f10601c35828566ddaadbb6d9d4335d004411ee69f1e02714d1c8
+    image: ghcr.io/haveagitgat/tdarr:2.81.01
     container_name: tdarr
     environment:
       - PUID=999
@@ -70,22 +70,125 @@ services:
     networks:
       - arr_egress
 
-  whisper:
+  # Subarr stack — subtitle coordination (github.com/coaxk/subarr).
+  # subgen is the Whisper transcription worker (patched McCloudS/subgen,
+  # drop-in replacement for the old whisper-asr-webservice — Bazarr's
+  # whisperai provider points at subgen:9000). subarr orchestrates: reads
+  # Bazarr wanted lists, probes for genuinely-missing subs, queues jobs to
+  # subgen, triggers Bazarr rescans. CPU-only: faster-whisper/CTranslate2
+  # has no Intel iGPU backend, so the iGPU stays with Tdarr/Plex.
+  subgen:
     <<: *hardened
-    image: onerahmet/openai-whisper-asr-webservice:latest@sha256:03b402335881cdab2e4939b24620809df8d6ceec3bf2712217d41c8761a0f5d4
-    container_name: whisper
-    env_file:
-      - ../common/secrets/.runtime/media.env
+    # entrypoint chowns bind mounts + gosu-drops to PUID
+    cap_add: *lsio_caps
+    image: ghcr.io/coaxk/subarr-subgen:2026.05.3-r8
+    container_name: subgen
     environment:
-      - ASR_MODEL=distil-large-v3
-      - ASR_ENGINE=whisperx
-      - ASR_DEVICE=cpu
-      - ASR_QUANTIZATION=float32
-    ports:
-      - 9001:9000
+      - PUID=999
+      - PGID=999
+      - TZ=Some/Region
+      - TRANSCRIBE_DEVICE=cpu
+      - WHISPER_MODEL=large-v3-turbo
+      # CPU transcription: one job at a time; Bazarr's synchronous provider
+      # requests bypass this limit by design, so 1 avoids three-way pile-ups.
+      - CONCURRENT_TRANSCRIPTIONS=1
+    volumes:
+      - /mnt/app/db/subgen/models:/subgen/models
+      - /mnt/app/db/subgen/cache:/cache
+      # Least-privilege: only the media subtrees, not the whole dataset. Paths
+      # match Bazarr (/mnt/data->/data, /mnt/data2->/data2) so transcription
+      # job paths resolve. subgen's entrypoint only chowns /subgen,/cache,/tmp.
+      - /mnt/data/media:/data/media
+      - /mnt/data2/media:/data2/media
     networks:
       - arr_control
-      - arr_egress
+      - arr_egress  # whisper model download (huggingface)
+
+  subarr:
+    <<: *hardened
+    # runs as root, app handles PUID/PGID for sidecar writes into
+    # plex-owned (999) media dirs
+    cap_add: *lsio_caps
+    image: ghcr.io/coaxk/subarr:2.3.1
+    container_name: subarr
+    depends_on:
+      - socket-proxy-subarr
+    environment:
+      - PUID=999
+      - PGID=999
+      - TZ=Some/Region
+      - UMASK=002
+      - SUBARR_PORT=9922
+      - SUBARR_DB_PATH=/config/subarr.db
+      - SUBGEN_URL=http://subgen:9000
+      - SUBGEN_CONTAINER=subgen
+      # Docker access via read-only socket-proxy (metadata GETs only,
+      # wizard auto-detect + monitor); raw docker.sock never mounted.
+      - DOCKER_HOST=tcp://socket-proxy-subarr:2375
+      - SUBARR_DOCKER_PROXY_URL=http://socket-proxy-subarr:2375
+    volumes:
+      - /mnt/app/db/subarr:/config
+      # Least-privilege: mount only the media subtrees, not the whole datasets.
+      # Paths match Bazarr (/mnt/data->/data, /mnt/data2->/data2) so subarr
+      # resolves Bazarr's wanted-list paths and writes sidecars there (999).
+      # Background: subarr 2.2.0's entrypoint ran `chown -R $PUID /data` with a
+      # top-level-only guard; with the whole /mnt/data mounted it recursively
+      # re-owned the dataset, breaking Nextcloud + user files. Fixed upstream in
+      # 2.2.1 (coaxk/subarr#369 / PR #370 — chowns only the DB dir, never /data).
+      # Narrowing here means even a regression can't reach anything but media.
+      - /mnt/data/media:/data/media
+      - /mnt/data2/media:/data2/media
+    ports:
+      - 9922:9922
+    networks:
+      - arr_control
+      - serve_plex_api  # tautulli playback signal + plex refresh/audio hints
+      - process_subarr_internal
+      - arr_egress  # HF model pulls (QE/VAD opt-ins) + port-publish NAT
+
+  # Read-only docker API proxy for subarr (same pattern as
+  # socket-proxy-homepage): container/network/image METADATA only, every
+  # write (POST/EXEC/DELETE/...) refused — a compromised subarr cannot
+  # pivot to host root. Trade-off: subarr's in-app subgen restart is
+  # disabled; restart subgen manually.
+  socket-proxy-subarr:
+    <<: *hardened
+    image: lscr.io/linuxserver/socket-proxy:3.4.0
+    container_name: socket-proxy-subarr
+    read_only: true
+    tmpfs:
+      - /run
+    environment:
+      - CONTAINERS=1 # GET container list/inspect/logs (wizard + log tail)
+      - NETWORKS=1   # GET /networks (wizard discovery)
+      - IMAGES=1     # GET image labels (version detection)
+      - INFO=1       # GET /info (reachability)
+      - PING=1
+      - VERSION=1
+      - POST=0       # no writes — blocks restart, create, kill, update
+      - ALLOW_START=0
+      - ALLOW_STOP=0
+      - ALLOW_RESTARTS=0
+      - EXEC=0
+      - DELETE=0
+      - VOLUMES=0
+      - BUILD=0
+      - COMMIT=0
+      - CONFIGS=0
+      - DISTRIBUTION=0
+      - EVENTS=0
+      - NODES=0
+      - PLUGINS=0
+      - SECRETS=0
+      - SERVICES=0
+      - SESSION=0
+      - SWARM=0
+      - SYSTEM=0
+      - TASKS=0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - process_subarr_internal
 
   unpackerr:
     <<: *hardened
@@ -125,14 +228,17 @@ services:
     # writes (rotation) so it needs DAC_OVERRIDE not the read-only variant.
     cap_add:
       - DAC_OVERRIDE
-    image: kometateam/kometa:latest@sha256:b265e952fcc3931ac378601faf9e6e0d90bee104fc70d9002f59c8678bf00b87
+    image: kometateam/kometa:v2.4.4
     container_name: kometa
     environment:
       - KOMETA_CONFIG=/config/config.yml
       - KOMETA_TIMES=10:00
     volumes:
       - /mnt/app/db/kometa:/config
-      # Phase 4: ./kometa/ moved from media/kometa/ (overlay assets).
+      # config.yml holds secrets — SOPS-managed, decrypted to .runtime and
+      # mounted read-only over the /config dir mount. Root reads it via the
+      # DAC_OVERRIDE cap already granted above (for log rotation).
+      - ../common/secrets/.runtime/kometa-config.yml:/config/config.yml:ro
       - ./kometa/r:/r
       - ./kometa/rc:/rc
       - ./kometa/rc:/rf
@@ -157,7 +263,7 @@ services:
 
   fetcharr:
     <<: *hardened
-    image: egg82/fetcharr:latest@sha256:ee683aa3478929e2bfdaa5f2ce7dd5378079a95b8f250543afd68e6df3b342bd
+    image: egg82/fetcharr:2.2.0
     container_name: fetcharr
     user: 999:999
     env_file:
@@ -188,7 +294,7 @@ services:
       - SETUID
       - SETGID
       - DAC_OVERRIDE
-    image: tautulli/tautulli:v2.17.1
+    image: tautulli/tautulli:v2.17.2
     container_name: tautulli
     environment:
       - PUID=999
@@ -303,6 +409,31 @@ services:
     networks:
       - process_tracearr_internal
 
+  # plex-watch-sync: bidirectional watched/progress mirror between configured
+  # Plex accounts on the local server, scoped by Plex label (default `sync`).
+  # Source: github.com/user/plex-watch-sync
+  # Receives webhooks from Tautulli; calls Plex over serve_plex_api.
+  # Holds reconcile bookkeeping (seen-keys JSON) in /app/state. The state
+  # bind on the host must be chown 10001:10001 (the container's non-root
+  # uid) before first start; with that, no cap_add is needed.
+  plex-watch-sync:
+    <<: *hardened
+    image: ghcr.io/user/plex-watch-sync:0.5.4
+    container_name: plex-watch-sync
+    env_file:
+      - ../common/secrets/.runtime/plex-watch-sync.env
+    volumes:
+      - ./plex-watch-sync/config.yaml:/app/config.yaml:ro
+      - /mnt/app/db/plex-watch-sync:/app/state
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:38491/healthz', timeout=3).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - serve_plex_api
+      - arr_egress  # plex.tv outbound, for resolving friend server access tokens
+
 
 networks:
   nas_default:
@@ -314,4 +445,6 @@ networks:
   serve_plex_api:
     external: true
   process_tracearr_internal:
+    external: true
+  process_subarr_internal:
     external: true

@@ -55,23 +55,24 @@ EXTERNAL_NETWORKS_SERVER=(
 
     # Per-app DB isolation (internal at create time)
     "process_tracearr_internal:internal"
+    "process_subarr_internal:internal"
     "personal_immich_db:internal"
     "personal_nextcloud_db:internal"
     "serve_books_grimmory_db:internal"
     "serve_games_db:internal"
 )
 
-# cloud-server and pi5 don't get the new zone networks — they have their own
+# cloud-server and home-server don't get the new zone networks — they have their own
 # project layouts (zabbix/ and home/) and aren't part of the server restructure.
 EXTERNAL_NETWORKS_CLOUD_SERVER=()
-EXTERNAL_NETWORKS_PI5=()
+EXTERNAL_NETWORKS_HOME_SERVER=()
 
 ensure_external_networks() {
     local -n nets
     case "$HOSTNAME" in
         server)  nets=EXTERNAL_NETWORKS_SERVER ;;
         cloud-server) nets=EXTERNAL_NETWORKS_CLOUD_SERVER ;;
-        pi5)       nets=EXTERNAL_NETWORKS_PI5 ;;
+        home-server)       nets=EXTERNAL_NETWORKS_HOME_SERVER ;;
         *)         return 0 ;;
     esac
 
@@ -92,7 +93,7 @@ ensure_external_networks() {
 
 # Decrypt SOPS-encrypted secrets into common/secrets/.runtime/.
 #
-# Each common/secrets/<name>.sops.yaml is decrypted via the mozilla/sops
+# Each common/secrets/<name>.sops.yaml is decrypted via the ghcr.io/getsops/sops
 # Docker image (no SOPS install on the host) into common/secrets/.runtime/<name>.env
 # in dotenv (KEY=value) format, suitable for compose `env_file:` directives.
 #
@@ -115,11 +116,12 @@ decrypt_secrets() {
     [ $found -eq 1 ] || return 0
 
     # Skip the whole step if none of this host's projects reference the
-    # decrypted runtime dir. pi5 (home/) is the case in point: it has no
-    # SOPS-encrypted secrets, so there's no reason to call out to the
-    # mozilla/sops docker image — which is amd64-only and can't run on
-    # pi5's arm64 anyway. Detection is generic: grep the compose files
-    # for the runtime path.
+    # decrypted runtime dir. home-server (home/) is the case in point: it has no
+    # SOPS-encrypted secrets, so there's no reason to pull and run the
+    # ghcr.io/getsops/sops docker image. (getsops is multi-arch — amd64
+    # and arm64 — so it would run fine on home-server; this skip is purely to
+    # avoid a needless image pull and docker invocation.) Detection is
+    # generic: grep the compose files for the runtime path.
     local needs_secrets=0 p
     for p in $PROJECTS; do
         if [ -f "$BASE/$p/docker-compose.yml" ] && \
@@ -165,7 +167,7 @@ decrypt_secrets() {
             -v "$sops_dir:/secrets:ro" \
             -v "$age_dir:/age:ro" \
             -e SOPS_AGE_KEY_FILE=/age/keys.txt \
-            mozilla/sops:latest@sha256:93a309eb417515a7f22954a6bc090481735ef7577befb06c4016edf6f03b58ef \
+            ghcr.io/getsops/sops:v3.13.1 \
             -d --output-type dotenv "/secrets/$(basename "$f")" > "$out.tmp"; then
             echo "decrypt_secrets: failed to decrypt $f" >&2
             rm -f "$out.tmp"
@@ -207,7 +209,7 @@ sops_export_env() {
         -v "$sops_dir:/secrets:ro" \
         -v "$age_dir:/age:ro" \
         -e SOPS_AGE_KEY_FILE=/age/keys.txt \
-        mozilla/sops:latest@sha256:93a309eb417515a7f22954a6bc090481735ef7577befb06c4016edf6f03b58ef \
+        ghcr.io/getsops/sops:v3.13.1 \
         -d --output-type dotenv "/secrets/$file") || {
         echo "sops_export_env: failed to decrypt $file" >&2
         return 1
@@ -253,7 +255,7 @@ decrypt_yaml_to() {
         -v "$sops_dir:/secrets:ro" \
         -v "$age_dir:/age:ro" \
         -e SOPS_AGE_KEY_FILE=/age/keys.txt \
-        mozilla/sops:latest@sha256:93a309eb417515a7f22954a6bc090481735ef7577befb06c4016edf6f03b58ef \
+        ghcr.io/getsops/sops:v3.13.1 \
         -d --output-type yaml "/secrets/$source_name" > "$dest_path.tmp"; then
         echo "decrypt_yaml_to: failed to decrypt $source_name" >&2
         rm -f "$dest_path.tmp"

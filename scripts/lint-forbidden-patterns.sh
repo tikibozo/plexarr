@@ -17,7 +17,7 @@ rc=0
 # top level so we don't pick up examples or vendored content.
 #
 # All host projects in this repo are now in scope for STRICT image-pinning
-# lint. zabbix/ joined 2026-05-18; home/ (pi5) joined the same day after
+# lint. zabbix/ joined 2026-05-18; home/ (home-server) joined the same day after
 # pinning landed. Renovate's ignorePaths similarly only excludes the
 # .runtime/ secrets dir now.
 FILES=()

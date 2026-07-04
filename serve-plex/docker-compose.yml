@@ -44,8 +44,8 @@ services:
     image: plexinc/pms-docker:1.43.1.10611-1e34174b1
     container_name: plex
     environment:
-      - PLEX_UID=3001
-      - PLEX_GID=3001
+      - PLEX_UID=999
+      - PLEX_GID=999
       - TZ=Some/Region
       - PLEX_CLAIM=<claim>
       - ADVERTISE_IP=http://plex.yourdomain.com:45738/
@@ -72,7 +72,7 @@ services:
 
   seerr:
     <<: *hardened
-    image: ghcr.io/seerr-team/seerr:v3.2.0
+    image: ghcr.io/seerr-team/seerr:v3.3.0
     container_name: seerr
     init: true
     environment:
@@ -119,7 +119,7 @@ services:
 
   requestrr:
     <<: *hardened
-    image: thomst08/requestrr:latest@sha256:2c01ead0c1eefbf205a819da024c619ae6b0702c7981a1790fc91298d5061c33
+    image: thomst08/requestrr:v2.1.10
     container_name: requestrr
     ports:
       - 4545:4545

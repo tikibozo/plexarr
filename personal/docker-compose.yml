@@ -106,7 +106,7 @@ services:
       - DAC_OVERRIDE
       - SETUID
       - SETGID
-    image: docker.io/valkey/valkey:9@sha256:8436e10bc65c94886a91d4415b6a6dfa9cb5a306fb3b996e5bb67cd2b4854193
+    image: docker.io/valkey/valkey:9@sha256:4963247afc4cd33c7d3b2d2816b9f7f8eeebab148d29056c2ca4d7cbc966f2d9
     container_name: immich_redis
     healthcheck:
       test: redis-cli ping || exit 1
@@ -139,7 +139,7 @@ services:
 
   immich-power-tools:
     <<: *hardened
-    image: ghcr.io/immich-power-tools/immich-power-tools:0.21.3
+    image: ghcr.io/immich-power-tools/immich-power-tools:v0.21.4
     container_name: immich_power_tools
     env_file:
       - .env
@@ -173,7 +173,7 @@ services:
       - SETUID
       - SETGID
       - NET_BIND_SERVICE
-    image: nextcloud:33.0.3
+    image: nextcloud:34.0.0
     container_name: nextcloud
     depends_on:
       db:
@@ -257,7 +257,7 @@ services:
       - DAC_OVERRIDE
       - SETUID
       - SETGID
-    image: nextcloud:33.0.3
+    image: nextcloud:34.0.0
     container_name: nextcloud-cron
     entrypoint: /cron.sh
     depends_on:
