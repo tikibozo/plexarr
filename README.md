@@ -22,7 +22,7 @@ The compose stack is divided across **multiple hosts** and **multiple projects p
 
 The original layout split services by *theme* — one project for user-facing stuff, another, "media" for the arr stack, "music", "abook", "photo", "sys", "rpt", etc. That made sense as a portability move (I could `down` a project on one host, copy the config, `up` it on another). But from a security perspective, this theme based organization ended up comingling services with different risk profiles on the same docker networks. For example the public-facing reverse proxy (huge blast radius) lived alongside the personal dashboard (tiny).
 
-In May 2026 I restructured into **trust zones** — projects grouped by risk class and outbound-network needs, not by topic. Each zone has its own docker networks, and the higher-risk zones (anything that touches attacker-controlled content, like indexers and downloaders) sit on `internal: true` bridges with no host egress except via the zones they explicitly need to talk to. The was followed up with capability dropping, no-new-privileges, network isolation as well. See Hardening below for more on this.
+In May 2026 I restructured into **trust zones** — projects grouped by risk class and outbound-network needs, not by topic. Each zone has its own docker networks, and the higher-risk zones (anything that touches potentially malicious content, like indexers and downloaders) sit on `internal: true` bridges with no host egress except via the zones they explicitly need to talk to. The was followed up with capability dropping, no-new-privileges, network isolation as well. See Hardening below for more on this.
 
 If you want to compare the older shape, the 12-themed-project layout (`nas` `sys` `monproxy` `media` `music` `abook` `ebook` `photo` `rpt` `files` `games`) is preserved in this repo's git history before the Phase 4 commit on `main`.
 
@@ -44,7 +44,7 @@ Main host `server` (TrueNAS Scale, runs everything user-facing):
     - [prowlarr-indexer-report](https://github.com/tikibozo/prowlarr-indexer-report) Ranks Prowlarr indexers by usefulness
     - [Postfix](https://github.com/bokysan/docker-postfix) SMTP relay
     - [rclone](https://rclone.org/) backups
-- **[acquire/](./acquire/docker-compose.yml)** — VPN-fronted downloaders + indexers (highest risk class — fetches attacker-controlled content)
+- **[acquire/](./acquire/docker-compose.yml)** — VPN-fronted downloaders + indexers
     - [Gluetun](https://github.com/qdm12/gluetun) — single WireGuard VPN egress fronting every downloader/indexer
     - [qBittorrent](https://www.qbittorrent.org/) + [Qui](https://github.com/autobrr/qui) for torrents
     - [SABnzbd](https://sabnzbd.org/) for usenet
@@ -96,8 +96,8 @@ Here's how I've mapped storage hardware to functional usage:
     - /mnt/transcode/plex — Plex transcoding temp storage
     - /mnt/transcode/tdarr — Tdarr transcoding temp storage
 - HDDs - Data (RAIDZ2 w/ NVMEs for ZFS cache)
-    - /mnt/data/media — Media storage
-    - /mnt/data2/media — Media storage
+    - /mnt/data/media — Media storage (18tb x 12)
+    - /mnt/data2/media — Media storage (30tb x 7)
 
 ## Hardening
 
@@ -274,7 +274,6 @@ If you're going to make use of this then it's best to go through the docker-comp
 
 That said, there are some random bits of context or ideas that may help you, so in no particular order:
 - I'm not sanitizing all the container config files/databases and including them here, but feel free to ask if you have a question about something that's not configured via the compose files. Some things I do have copies of in the repo for source control, which when editing I copy manually into place in their docker config/db volume.
-- UID/GID. Most all the files/directories are configured to use plex:plex on my system (uid 3001 in the source repo; sanitized to 999 here), though some containers prefer their config files to be owned by root.
+- UID/GID. Most all the files/directories are configured to use plex:plex on my system, though some containers prefer their config files to be owned by root.
 - There are a bunch of dumb helper scripts in `scripts/` because I got tired of typing commands out. `scripts/up`, `scripts/dco`, and `scripts/update-docker-images` are the main entry points — they read `scripts/projects.conf` to know which projects belong on the current host, handle SOPS decryption, and ensure external docker networks exist. Add your user account to the docker group so you don't have to sudo every docker command.
 - 1080p & 4k *arr instances. This is the "old" way of partitioning 4k content. I prefer it since I don't often use 4k media (yet) and by having separate instances it's easy to point dedicated Plex libraries at the 4k directories (and not share with Plex users.) Also Seerr supports this setup and lights up additional support for requesting in 1080/standard and 4k when you add multiple instances and configure them for 4k. Plex's editions support (or simply transcoding hw heft) can alleviate the need for the additional services, but extra sonarr/radarr instances are relatively cheap imho.
-- If you're adapting this for a single host, you can collapse all projects onto one machine — most of the docker network topology stays exactly the same, only the host headers and `scripts/projects.conf` change.
