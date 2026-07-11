@@ -72,7 +72,6 @@ Main host `server` (TrueNAS Scale, runs everything user-facing):
     - [Recyclarr](https://github.com/recyclarr/recyclarr) TRaSH guide deployment
     - [Fetcharr](https://github.com/egg82/fetcharr) to keep things fresh
     - [Tautulli](https://tautulli.com/) + [Tracearr](https://github.com/connorgallopo/tracearr) for reporting
-    - [Checkrr](https://github.com/aetaric/checkrr) bitrot detection & remediation (so far unneeded on zfs with ecc)
     - [plex-watch-sync](https://github.com/tikibozo/plex-watch-sync) mirrors watched/progress state between Plex accounts
 - **[personal/](./personal/docker-compose.yml)** — High-data-sensitivity stacks (private docker networks, no cross-talk by default)
     - [Immich](https://immich.app/) — Self-hosted photo/video
